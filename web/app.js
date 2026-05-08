@@ -262,6 +262,9 @@
   function inferRouteAUserIntent(userText, assistantText) {
     var u = userText || "";
     var a = assistantText || "";
+    if (/Step\s*1|step\s*1|灵感补全|系统侧已注入|method「Step1|——\s*素材/.test(u)) {
+      return { id: 1, label: "Step1 灵感" };
+    }
     if (/Step\s*4|step\s*4|人性化|去痕|AI\s*感|润色/.test(u)) {
       return { id: 4, label: "Step4 人味润色" };
     }
@@ -273,9 +276,6 @@
     }
     if (/确认|可以|继续|开始/.test(u) && /灵感补全稿|##\s*灵感补全|Step1|灵感/.test(a)) {
       return { id: 2, label: "Step2 大纲" };
-    }
-    if (/Step\s*1|step\s*1|灵感补全|系统侧已注入|method「Step1|——\s*素材/.test(u)) {
-      return { id: 1, label: "Step1 灵感" };
     }
     return null;
   }
@@ -1016,10 +1016,16 @@
         while (true) {
           var part = await reader.read();
           if (part.done) break;
-          content += decoder.decode(part.value, { stream: true }).replace(/\u200b/g, "");
+          content += decoder
+            .decode(part.value, { stream: true })
+            .replace(/\u200b/g, "")
+            .replace(/\n?<!--KEEPALIVE:[\s\S]*?-->\n?/g, "");
           API.updateLastAssistantMessage(content);
         }
-        content += decoder.decode().replace(/\u200b/g, "");
+        content += decoder
+          .decode()
+          .replace(/\u200b/g, "")
+          .replace(/\n?<!--KEEPALIVE:[\s\S]*?-->\n?/g, "");
         API.updateLastAssistantMessage(content);
         showToast("已收到助手回复");
         return true;
