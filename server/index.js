@@ -20,14 +20,57 @@ function readDoc(name) {
   }
 }
 
-function buildSystemPrompt() {
-  const skill = readDoc("skill.md");
-  const method = readDoc("method.md");
+function pickMethodSection(method, startHeading, endHeading) {
+  const start = method.indexOf(startHeading);
+  if (start < 0) return "";
+  const end = endHeading ? method.indexOf(endHeading, start + startHeading.length) : -1;
+  return (end > start ? method.slice(start, end) : method.slice(start)).trim();
+}
+
+function buildCompactSkill(skill) {
+  const keep = [];
+  const trigger = pickMethodSection(skill, "## 触发条件", "## 核心原则");
+  const principles = pickMethodSection(skill, "## 核心原则", "## 执行流程（对齐 PRD：先读后写）");
+  const flow = pickMethodSection(skill, "## 执行流程（对齐 PRD：先读后写）", "## 自检清单（对齐 PRD 附录 + method）");
+  if (trigger) keep.push(trigger);
+  if (principles) keep.push(principles);
+  if (flow) keep.push(flow);
+  return keep.join("\n\n");
+}
+
+function buildMethodByStage(method, stage) {
+  const tone = pickMethodSection(method, "## 与用户沟通时的用语习惯", "");
+  let core = "";
+  if (stage === "step1") {
+    core = pickMethodSection(method, "## Step1：灵感补全", "## Step2：论坛体故事发展大纲");
+  } else if (stage === "step2") {
+    core = pickMethodSection(method, "## Step2：论坛体故事发展大纲", "## Step3：论坛体正文（约 50～80 楼）");
+  } else if (stage === "step3") {
+    core = pickMethodSection(method, "## Step3：论坛体正文（约 50～80 楼）", "## Step4：人性化去痕（Humanizer / 减少 AI 感）");
+  } else if (stage === "step4") {
+    core = pickMethodSection(method, "## Step4：人性化去痕（Humanizer / 减少 AI 感）", "## 与用户沟通时的用语习惯");
+  } else {
+    core = [
+      pickMethodSection(method, "## Step1：灵感补全", "## Step2：论坛体故事发展大纲"),
+      pickMethodSection(method, "## Step2：论坛体故事发展大纲", "## Step3：论坛体正文（约 50～80 楼）"),
+    ]
+      .filter(Boolean)
+      .join("\n\n");
+  }
+  return [core, tone].filter(Boolean).join("\n\n");
+}
+
+function buildSystemPrompt(stage) {
+  const skill = buildCompactSkill(readDoc("skill.md"));
+  const method = buildMethodByStage(readDoc("method.md"), stage);
   const header = [
     "你在网页端模拟用户已通过指令 /xiaoshuo 触发了「社媒论坛体小说」创作流程。",
-    "你必须严格、完整遵守下方附录中的 skill（编排闸门）与 method（各 Step 模板与质量标准）。",
+    "你必须严格遵守下方附录中的 skill（编排闸门）与当前阶段对应的 method 片段。",
     "多轮对话中：在用户确认前不要擅自进入 Step2/Step3；用户说「确认」或明确修改后再推进。",
     "输出语言与用户一致，默认简体中文。论坛体正文必须使用 method 规定的楼层标记格式（如 【1L｜ID】）。",
+    stage === "step3" || stage === "step4"
+      ? "当前是长输出阶段：优先保证楼层推进、回复关系和声纹准确；若内容过长，可自然分段，并明确提示用户回复“继续”。"
+      : "当前优先保证交互闸门准确，先确认再推进，不要抢跑到后续阶段。",
     "",
     "【网页首轮硬规则】当用户在本轮 /xiaoshuo 消息里「—— 素材（来自上传文件）——」之后附带了**成段可读**的灵感正文（明显多于几个字）时：你必须**在同一条助手回复中**直接按 method「Step1：灵感补全」输出完整 Markdown（须含「## 灵感补全稿」及模板中的各小节），并按 method 文末句式邀请用户「确认」或修改；**禁止**仅用 skill「阶段 A」泛泛追问却不给出灵感补全稿。仅当素材几乎为空、乱码或完全无法理解时，才允许先提**至多 2 个**澄清问题，并在同条回复中仍尽量给出可编辑的 Step1 草案。",
     "",
@@ -42,10 +85,11 @@ function buildSystemPrompt() {
   return header;
 }
 
-let cachedSystemPrompt = null;
-function getSystemPrompt() {
-  if (!cachedSystemPrompt) cachedSystemPrompt = buildSystemPrompt();
-  return cachedSystemPrompt;
+const promptCache = new Map();
+function getSystemPrompt(stage) {
+  const key = stage || "unknown";
+  if (!promptCache.has(key)) promptCache.set(key, buildSystemPrompt(key));
+  return promptCache.get(key);
 }
 
 function inferCurrentStage(messages) {
@@ -194,7 +238,8 @@ app.post("/api/chat", async (req, res) => {
     const url = `${base}/chat/completions`;
     const model = process.env.LLM_MODEL || "gpt-4o-mini";
 
-    const baseMessages = [{ role: "system", content: getSystemPrompt() }, ...sanitized];
+    const currentStage = inferCurrentStage(sanitized);
+    const baseMessages = [{ role: "system", content: getSystemPrompt(currentStage) }, ...sanitized];
     const payload = {
       model,
       messages: baseMessages,
