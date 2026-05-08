@@ -9,6 +9,7 @@ require("dotenv").config({ path: path.join(__dirname, ".env") });
 
 const REPO_ROOT = path.join(__dirname, "..");
 const WEB_DIR = path.join(REPO_ROOT, "web");
+const LLM_REQUEST_TIMEOUT_MS = Number(process.env.LLM_REQUEST_TIMEOUT_MS) || 45000;
 
 function readDoc(name) {
   const p = path.join(REPO_ROOT, name);
@@ -45,6 +46,92 @@ let cachedSystemPrompt = null;
 function getSystemPrompt() {
   if (!cachedSystemPrompt) cachedSystemPrompt = buildSystemPrompt();
   return cachedSystemPrompt;
+}
+
+function inferCurrentStage(messages) {
+  for (let i = messages.length - 1; i >= 0; i -= 1) {
+    const text = String(messages[i] && messages[i].content ? messages[i].content : "");
+    if (/【\s*\d+L[｜|]/.test(text)) return "step3";
+    if (/论坛体发展大纲|分段节奏|Step2|大纲/.test(text)) return "step2";
+    if (/灵感补全稿|##\s*灵感补全|Step1|灵感/.test(text)) return "step1";
+  }
+  return "unknown";
+}
+
+function buildChunkRetryHint(messages) {
+  const stage = inferCurrentStage(messages);
+  if (stage === "step3") {
+    return [
+      "上一次请求因内容过长或上游响应过慢而超时。",
+      "请保持当前剧情方向不变，改为分段输出正文。",
+      "这一次只输出当前论坛体正文的第一段，控制在 10 到 15 楼。",
+      "必须从当前应写的起始楼层连续编号，保留【xL｜ID】格式与回复楼层标注。",
+      "文末单独补一句：如果需要下一段，请直接回复“继续”。",
+    ].join("");
+  }
+  if (stage === "step2") {
+    return [
+      "上一次请求因内容过长或上游响应过慢而超时。",
+      "请保持当前任务不变，但压缩输出长度。",
+      "如果你正在写大纲，只输出最关键的总览和前两到三个分段，结尾提示我回复“继续”获取下一段。",
+    ].join("");
+  }
+  return [
+    "上一次请求因内容过长或上游响应过慢而超时。",
+    "请保持当前任务不变，但优先输出最关键、最短的一段结果，必要时主动分段，并提示我回复“继续”。",
+  ].join("");
+}
+
+async function requestChatCompletion(url, key, payload) {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), LLM_REQUEST_TIMEOUT_MS);
+  try {
+    const response = await fetch(url, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${key}`,
+      },
+      body: JSON.stringify(payload),
+      signal: controller.signal,
+    });
+    const text = await response.text();
+    return { response, text };
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+function parseUpstreamJson(response, text, res) {
+  let data;
+  try {
+    data = JSON.parse(text);
+  } catch (_e) {
+    res.status(502).json({
+      error: "上游返回非 JSON",
+      status: response.status,
+      snippet: text.slice(0, 500),
+    });
+    return null;
+  }
+
+  if (!response.ok) {
+    res.status(502).json({
+      error: data.error?.message || data.message || `上游错误 HTTP ${response.status}`,
+      detail: data,
+    });
+    return null;
+  }
+
+  const choice = data.choices && data.choices[0];
+  const msg = choice && choice.message;
+  const content = msg && msg.content;
+  if (typeof content !== "string") {
+    res.status(502).json({ error: "上游未返回文本 content", detail: data });
+    return null;
+  }
+
+  return content;
 }
 
 const app = express();
@@ -107,49 +194,50 @@ app.post("/api/chat", async (req, res) => {
     const url = `${base}/chat/completions`;
     const model = process.env.LLM_MODEL || "gpt-4o-mini";
 
+    const baseMessages = [{ role: "system", content: getSystemPrompt() }, ...sanitized];
     const payload = {
       model,
-      messages: [{ role: "system", content: getSystemPrompt() }, ...sanitized],
+      messages: baseMessages,
       temperature: 1,
       max_tokens: Number(process.env.LLM_MAX_TOKENS) || 8192,
     };
 
-    const r = await fetch(url, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${key}`,
-      },
-      body: JSON.stringify(payload),
-    });
-
-    const text = await r.text();
-    let data;
     try {
-      data = JSON.parse(text);
-    } catch (_e) {
-      return res.status(502).json({
-        error: "上游返回非 JSON",
-        status: r.status,
-        snippet: text.slice(0, 500),
-      });
+      const first = await requestChatCompletion(url, key, payload);
+      const content = parseUpstreamJson(first.response, first.text, res);
+      if (content == null) return;
+      return res.json({ message: { role: "assistant", content } });
+    } catch (e) {
+      if (e && e.name !== "AbortError") throw e;
     }
 
-    if (!r.ok) {
-      return res.status(502).json({
-        error: data.error?.message || data.message || `上游错误 HTTP ${r.status}`,
-        detail: data,
-      });
-    }
+    console.warn("[api/chat] first request timed out, retrying with chunked output");
+    const retryPayload = {
+      ...payload,
+      messages: [
+        ...baseMessages,
+        {
+          role: "user",
+          content: buildChunkRetryHint(sanitized),
+        },
+      ],
+      max_tokens: Math.min(Number(process.env.LLM_MAX_TOKENS) || 8192, 4096),
+    };
 
-    const choice = data.choices && data.choices[0];
-    const msg = choice && choice.message;
-    const content = msg && msg.content;
-    if (typeof content !== "string") {
-      return res.status(502).json({ error: "上游未返回文本 content", detail: data });
+    try {
+      const retry = await requestChatCompletion(url, key, retryPayload);
+      const retryContent = parseUpstreamJson(retry.response, retry.text, res);
+      if (retryContent == null) return;
+      return res.json({ message: { role: "assistant", content: retryContent } });
+    } catch (e) {
+      if (e && e.name === "AbortError") {
+        return res.status(504).json({
+          error:
+            "请求超时：已自动尝试改为分段输出，但上游仍未及时返回。请缩短本轮要求，或让正文按 10 到 15 楼一段继续。",
+        });
+      }
+      throw e;
     }
-
-    res.json({ message: { role: "assistant", content } });
   } catch (e) {
     console.error(e);
     res.status(500).json({ error: e.message || String(e) });
