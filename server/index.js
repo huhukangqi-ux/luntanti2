@@ -444,7 +444,7 @@ app.post("/api/chat", async (req, res) => {
     const payload = {
       model,
       messages: baseMessages,
-      temperature: Number(process.env.LLM_TEMPERATURE) || 0.85,
+      temperature: Number(process.env.LLM_TEMPERATURE) || 1,
       max_tokens: getMaxTokensForStage(currentStage),
     };
     console.log(
