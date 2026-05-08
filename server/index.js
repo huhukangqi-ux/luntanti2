@@ -9,7 +9,7 @@ require("dotenv").config({ path: path.join(__dirname, ".env") });
 
 const REPO_ROOT = path.join(__dirname, "..");
 const WEB_DIR = path.join(REPO_ROOT, "web");
-const LLM_REQUEST_TIMEOUT_MS = Number(process.env.LLM_REQUEST_TIMEOUT_MS) || 45000;
+const LLM_REQUEST_TIMEOUT_MS = Number(process.env.LLM_REQUEST_TIMEOUT_MS) || 300000;
 
 function readDoc(name) {
   const p = path.join(REPO_ROOT, name);
@@ -233,7 +233,7 @@ app.post("/api/chat", async (req, res) => {
       if (e && e.name === "AbortError") {
         return res.status(504).json({
           error:
-            "请求超时：已自动尝试改为分段输出，但上游仍未及时返回。请缩短本轮要求，或让正文按 10 到 15 楼一段继续。",
+            "请求超时：系统已等待 5 分钟并自动尝试改为分段输出，但上游仍未及时返回。你可以重新试一次；若仍较慢，建议把正文按 10 到 15 楼一段继续生成。",
         });
       }
       throw e;
