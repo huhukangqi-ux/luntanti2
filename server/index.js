@@ -180,6 +180,16 @@ function compactMessagesForStage(messages, stage) {
   return merged;
 }
 
+function getMaxTokensForStage(stage) {
+  const configured = Number(process.env.LLM_MAX_TOKENS);
+  if (configured > 0) return configured;
+  if (stage === "step1") return 2400;
+  if (stage === "step2") return 3200;
+  if (stage === "step3") return 6000;
+  if (stage === "step4") return 5000;
+  return 3200;
+}
+
 async function requestChatCompletion(url, key, payload) {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), LLM_REQUEST_TIMEOUT_MS);
@@ -241,16 +251,22 @@ async function streamChatCompletion(url, key, payload, res, trace) {
     }
 
     res.status(200);
-    res.setHeader("Content-Type", "text/plain; charset=utf-8");
+    res.setHeader("Content-Type", "text/event-stream; charset=utf-8");
     res.setHeader("Cache-Control", "no-cache, no-transform");
+    res.setHeader("Connection", "keep-alive");
     res.setHeader("X-Accel-Buffering", "no");
     res.flushHeaders?.();
-    const makeHeartbeat = () =>
-      `\n<!--KEEPALIVE:${Date.now()}:${".".repeat(1024)}-->\n`;
-    res.write(makeHeartbeat());
+    const sendSse = (event, data) => {
+      res.write(`event: ${event}\n`);
+      res.write(`data: ${JSON.stringify(data)}\n\n`);
+    };
+    const sendHeartbeat = () => {
+      res.write(`: keepalive ${Date.now()} ${".".repeat(1024)}\n\n`);
+    };
+    sendHeartbeat();
     heartbeat = setInterval(() => {
       if (!res.destroyed && !res.writableEnded) {
-        res.write(makeHeartbeat());
+        sendHeartbeat();
       }
     }, 10000);
 
@@ -284,7 +300,7 @@ async function streamChatCompletion(url, key, payload, res, trace) {
             console.log(`[api/chat ${trace}] upstream:first-token after=${elapsed(started)}`);
           }
           tokenChunks += 1;
-          res.write(content);
+          sendSse("delta", { content });
         }
       }
     }
@@ -299,6 +315,7 @@ async function streamChatCompletion(url, key, payload, res, trace) {
         firstTokenAt ? firstTokenAt - started : "none"
       }`
     );
+    sendSse("done", {});
     return res.end();
   } finally {
     if (heartbeat) clearInterval(heartbeat);
@@ -427,8 +444,8 @@ app.post("/api/chat", async (req, res) => {
     const payload = {
       model,
       messages: baseMessages,
-      temperature: 1,
-      max_tokens: Number(process.env.LLM_MAX_TOKENS) || 8192,
+      temperature: Number(process.env.LLM_TEMPERATURE) || 0.85,
+      max_tokens: getMaxTokensForStage(currentStage),
     };
     console.log(
       `[api/chat ${trace}] prepared stage=${currentStage} raw_messages=${raw.length} sanitized=${sanitized.length} prompt_messages=${baseMessages.length}`
