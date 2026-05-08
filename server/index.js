@@ -203,6 +203,7 @@ async function requestChatCompletion(url, key, payload) {
 async function streamChatCompletion(url, key, payload, res, trace) {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), LLM_REQUEST_TIMEOUT_MS);
+  let heartbeat = null;
   let response;
   const started = nowMs();
   let firstTokenAt = 0;
@@ -244,6 +245,11 @@ async function streamChatCompletion(url, key, payload, res, trace) {
     res.setHeader("Cache-Control", "no-cache, no-transform");
     res.setHeader("X-Accel-Buffering", "no");
     res.flushHeaders?.();
+    heartbeat = setInterval(() => {
+      if (!res.destroyed && !res.writableEnded) {
+        res.write("\u200b");
+      }
+    }, 15000);
 
     const decoder = new TextDecoder("utf-8");
     let buffer = "";
@@ -292,6 +298,7 @@ async function streamChatCompletion(url, key, payload, res, trace) {
     );
     return res.end();
   } finally {
+    if (heartbeat) clearInterval(heartbeat);
     clearTimeout(timer);
   }
 }
