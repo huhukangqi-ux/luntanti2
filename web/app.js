@@ -1001,6 +1001,46 @@
           return true;
         }
 
+        if (contentType.indexOf("text/event-stream") >= 0) {
+          API.addAssistantMessage("");
+          var sseReader = r.body.getReader();
+          var sseDecoder = new TextDecoder("utf-8");
+          var sseBuffer = "";
+          var sseContent = "";
+
+          function handleSseBlock(block) {
+            if (!block || block.charAt(0) === ":") return;
+            var eventName = "message";
+            var dataLines = [];
+            block.split(/\r?\n/).forEach(function (line) {
+              if (line.indexOf("event:") === 0) eventName = line.slice(6).trim();
+              if (line.indexOf("data:") === 0) dataLines.push(line.slice(5).trim());
+            });
+            if (eventName !== "delta" || !dataLines.length) return;
+            try {
+              var payload = JSON.parse(dataLines.join("\n"));
+              if (payload && typeof payload.content === "string") {
+                sseContent += payload.content;
+                API.updateLastAssistantMessage(sseContent);
+              }
+            } catch (_e) {}
+          }
+
+          while (true) {
+            var ssePart = await sseReader.read();
+            if (ssePart.done) break;
+            sseBuffer += sseDecoder.decode(ssePart.value, { stream: true });
+            var blocks = sseBuffer.split(/\r?\n\r?\n/);
+            sseBuffer = blocks.pop() || "";
+            blocks.forEach(handleSseBlock);
+          }
+          sseBuffer += sseDecoder.decode();
+          if (sseBuffer) handleSseBlock(sseBuffer);
+          API.updateLastAssistantMessage(sseContent);
+          showToast("已收到助手回复");
+          return true;
+        }
+
         if (!r.body || !window.TextDecoder) {
           var text = await r.text();
           API.addAssistantMessage(text);
