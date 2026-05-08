@@ -1016,10 +1016,10 @@
         while (true) {
           var part = await reader.read();
           if (part.done) break;
-          content += decoder.decode(part.value, { stream: true });
+          content += decoder.decode(part.value, { stream: true }).replace(/\u200b/g, "");
           API.updateLastAssistantMessage(content);
         }
-        content += decoder.decode();
+        content += decoder.decode().replace(/\u200b/g, "");
         API.updateLastAssistantMessage(content);
         showToast("已收到助手回复");
         return true;
