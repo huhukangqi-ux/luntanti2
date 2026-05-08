@@ -1,0 +1,14 @@
+﻿{
+  "name": "shemei-xiaoshuo",
+  "version": "1.0.0",
+  "private": true,
+  "description": "社媒论坛体小说工作室：Express API 代理 + 静态前端",
+  "scripts": {
+    "postinstall": "npm install --prefix server",
+    "start": "node server/index.js",
+    "start:server": "npm start --prefix server"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}
