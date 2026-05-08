@@ -104,8 +104,8 @@ function inferCurrentStage(messages) {
   for (let i = messages.length - 1; i >= 0; i -= 1) {
     const text = String(messages[i] && messages[i].content ? messages[i].content : "");
     if (/【\s*\d+L[｜|]/.test(text)) return "step3";
-    if (/论坛体发展大纲|分段节奏|Step2|大纲/.test(text)) return "step2";
     if (/灵感补全稿|##\s*灵感补全|Step1|灵感/.test(text)) return "step1";
+    if (/论坛体发展大纲|分段节奏|Step2|大纲/.test(text)) return "step2";
   }
   return "unknown";
 }
@@ -120,14 +120,14 @@ function getLastUserText(messages) {
 
 function inferTargetStage(messages) {
   const lastUser = getLastUserText(messages);
+  if (/Step\s*1|step\s*1|灵感补全|系统侧已注入|method「Step1|——\s*素材/.test(lastUser)) {
+    return "step1";
+  }
   if (/Step\s*4|step\s*4|人性化|去痕|AI\s*感|润色/.test(lastUser)) return "step4";
   if (/Step\s*3|step\s*3|正文|论坛体正文|进入\s*3|进\s*3|继续\s*\d*[\s-]*(楼|L)?/.test(lastUser)) {
     return "step3";
   }
   if (/Step\s*2|step\s*2|大纲|分段/.test(lastUser)) return "step2";
-  if (/Step\s*1|step\s*1|灵感补全|系统侧已注入|method「Step1|——\s*素材/.test(lastUser)) {
-    return "step1";
-  }
 
   const current = inferCurrentStage(messages);
   if (current === "step2" && /确认|可以|继续|开始写|进入/.test(lastUser)) return "step3";
@@ -245,11 +245,14 @@ async function streamChatCompletion(url, key, payload, res, trace) {
     res.setHeader("Cache-Control", "no-cache, no-transform");
     res.setHeader("X-Accel-Buffering", "no");
     res.flushHeaders?.();
+    const makeHeartbeat = () =>
+      `\n<!--KEEPALIVE:${Date.now()}:${".".repeat(1024)}-->\n`;
+    res.write(makeHeartbeat());
     heartbeat = setInterval(() => {
       if (!res.destroyed && !res.writableEnded) {
-        res.write("\u200b");
+        res.write(makeHeartbeat());
       }
-    }, 15000);
+    }, 10000);
 
     const decoder = new TextDecoder("utf-8");
     let buffer = "";
