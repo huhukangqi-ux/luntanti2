@@ -259,6 +259,27 @@
     return { id: 0, label: "对话中" };
   }
 
+  function inferRouteAUserIntent(userText, assistantText) {
+    var u = userText || "";
+    var a = assistantText || "";
+    if (/Step\s*4|step\s*4|人性化|去痕|AI\s*感|润色/.test(u)) {
+      return { id: 4, label: "Step4 人味润色" };
+    }
+    if (/Step\s*3|step\s*3|正文|论坛体正文|进入\s*3|进\s*3|继续\s*\d*[\s-]*(楼|L)?/.test(u)) {
+      return { id: 3, label: "Step3 论坛体正文" };
+    }
+    if (/Step\s*2|step\s*2|大纲|分段|进入\s*2|进\s*2/.test(u)) {
+      return { id: 2, label: "Step2 大纲" };
+    }
+    if (/确认|可以|继续|开始/.test(u) && /灵感补全稿|##\s*灵感补全|Step1|灵感/.test(a)) {
+      return { id: 2, label: "Step2 大纲" };
+    }
+    if (/Step\s*1|step\s*1|灵感补全|系统侧已注入|method「Step1|——\s*素材/.test(u)) {
+      return { id: 1, label: "Step1 灵感" };
+    }
+    return null;
+  }
+
   function inferPendingConfirmation(assistantText) {
     var t = assistantText || "";
     return /请确认|请你确认|待你确认|以上方向|确认后再|回复「确认」|可回复「确认」|确认大纲|指出要改|修改后再|或直接回复|欢迎修改|是否满意|如需继续|请\s*指正/.test(
@@ -274,6 +295,7 @@
     if (!badge) return;
 
     var last = API.getLastAssistantMessage();
+    var lastUser = API.getLastUserMessage ? API.getLastUserMessage() : "";
     var lastRole =
       API.messages.length > 0 ? API.messages[API.messages.length - 1].role : "";
     var hasAssistantTurn = lastRole === "assistant" && last;
@@ -282,7 +304,9 @@
       badge.textContent = "路线 A · 待定";
       badge.className = "forge-step-pill" + (API.isLoading ? " forge-step-pill--loading" : "");
     } else {
-      var ph = inferRouteAPhase(last);
+      var intentPhase =
+        (API.isLoading || lastRole === "user") && inferRouteAUserIntent(lastUser, last);
+      var ph = intentPhase || inferRouteAPhase(last);
       var pending = hasAssistantTurn && inferPendingConfirmation(last);
       badge.textContent = ph.label + (pending ? " · 待确认" : "");
       badge.className = "forge-step-pill" + (pending ? " forge-step-pill--pending" : "") + (API.isLoading ? " forge-step-pill--loading" : "");
@@ -879,6 +903,18 @@
       API.renderChat();
     },
 
+    updateLastAssistantMessage: function (content) {
+      for (var i = API.messages.length - 1; i >= 0; i--) {
+        if (API.messages[i].role === "assistant") {
+          API.messages[i].content = content;
+          API.saveSession();
+          API.renderChat();
+          return true;
+        }
+      }
+      return false;
+    },
+
     getLastAssistantMessage: function () {
       for (var i = API.messages.length - 1; i >= 0; i--) {
         if (API.messages[i].role === "assistant") {
@@ -886,6 +922,15 @@
         }
       }
       return null;
+    },
+
+    getLastUserMessage: function () {
+      for (var i = API.messages.length - 1; i >= 0; i--) {
+        if (API.messages[i].role === "user") {
+          return API.messages[i].content;
+        }
+      }
+      return "";
     },
 
     fetchHealth: async function () {
@@ -934,21 +979,48 @@
           body: JSON.stringify({ messages: API.messages }),
         });
 
-        var j = await r.json().catch(function () {
-          return {};
-        });
-
         if (!r.ok) {
+          var j = await r.json().catch(function () {
+            return {};
+          });
           API.setError((j.error || "请求失败") + (j.snippet ? "\n" + j.snippet : ""));
           return false;
         }
 
-        if (!j.message || typeof j.message.content !== "string") {
-          API.setError("响应格式异常");
-          return false;
+        var contentType = r.headers.get("content-type") || "";
+        if (contentType.indexOf("application/json") >= 0) {
+          var j2 = await r.json().catch(function () {
+            return {};
+          });
+          if (!j2.message || typeof j2.message.content !== "string") {
+            API.setError("响应格式异常");
+            return false;
+          }
+          API.addAssistantMessage(j2.message.content);
+          showToast("已收到助手回复");
+          return true;
         }
 
-        API.addAssistantMessage(j.message.content);
+        if (!r.body || !window.TextDecoder) {
+          var text = await r.text();
+          API.addAssistantMessage(text);
+          showToast("已收到助手回复");
+          return true;
+        }
+
+        API.addAssistantMessage("");
+        var reader = r.body.getReader();
+        var decoder = new TextDecoder("utf-8");
+        var content = "";
+
+        while (true) {
+          var part = await reader.read();
+          if (part.done) break;
+          content += decoder.decode(part.value, { stream: true });
+          API.updateLastAssistantMessage(content);
+        }
+        content += decoder.decode();
+        API.updateLastAssistantMessage(content);
         showToast("已收到助手回复");
         return true;
       } catch (e) {
