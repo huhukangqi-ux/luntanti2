@@ -11,6 +11,14 @@ const REPO_ROOT = path.join(__dirname, "..");
 const WEB_DIR = path.join(REPO_ROOT, "web");
 const LLM_REQUEST_TIMEOUT_MS = Number(process.env.LLM_REQUEST_TIMEOUT_MS) || 300000;
 
+function nowMs() {
+  return Date.now();
+}
+
+function elapsed(start) {
+  return `${nowMs() - start}ms`;
+}
+
 function readDoc(name) {
   const p = path.join(REPO_ROOT, name);
   try {
@@ -102,17 +110,51 @@ function inferCurrentStage(messages) {
   return "unknown";
 }
 
-function buildChunkRetryHint(messages) {
-  const stage = inferCurrentStage(messages);
+function getLastUserText(messages) {
+  for (let i = messages.length - 1; i >= 0; i -= 1) {
+    const msg = messages[i];
+    if (msg && msg.role === "user") return String(msg.content || "");
+  }
+  return "";
+}
+
+function inferTargetStage(messages) {
+  const lastUser = getLastUserText(messages);
+  if (/Step\s*4|step\s*4|人性化|去痕|AI\s*感|润色/.test(lastUser)) return "step4";
+  if (/Step\s*3|step\s*3|正文|论坛体正文|进入\s*3|进\s*3|继续\s*\d*[\s-]*(楼|L)?/.test(lastUser)) {
+    return "step3";
+  }
+  if (/Step\s*2|step\s*2|大纲|分段/.test(lastUser)) return "step2";
+  if (/Step\s*1|step\s*1|灵感补全|系统侧已注入|method「Step1|——\s*素材/.test(lastUser)) {
+    return "step1";
+  }
+
+  const current = inferCurrentStage(messages);
+  if (current === "step2" && /确认|可以|继续|开始写|进入/.test(lastUser)) return "step3";
+  if (current === "step3" && /确认|继续|优化|润色/.test(lastUser)) return "step4";
+  return current;
+}
+
+function buildChunkInstruction(stage) {
   if (stage === "step3") {
     return [
-      "上一次请求因内容过长或上游响应过慢而超时。",
-      "请保持当前剧情方向不变，改为分段输出正文。",
-      "这一次只输出当前论坛体正文的第一段，控制在 10 到 15 楼。",
+      "请主动采用分段输出，不要一次性写完整长帖。",
+      "这一次只输出当前论坛体正文的一段，控制在 20 到 25 楼。",
       "必须从当前应写的起始楼层连续编号，保留【xL｜ID】格式与回复楼层标注。",
       "文末单独补一句：如果需要下一段，请直接回复“继续”。",
     ].join("");
   }
+  if (stage === "step4") {
+    return [
+      "请主动采用分段输出，不要一次性润色完整长帖。",
+      "这一次只优化 10 到 15 楼，保持楼层号、ID、剧情事实与回复关系不变。",
+      "文末单独补一句：如果需要继续优化下一段，请直接回复“继续”。",
+    ].join("");
+  }
+  return "";
+}
+
+function buildChunkRetryHint(messages, stage) {
   if (stage === "step2") {
     return [
       "上一次请求因内容过长或上游响应过慢而超时。",
@@ -124,6 +166,18 @@ function buildChunkRetryHint(messages) {
     "上一次请求因内容过长或上游响应过慢而超时。",
     "请保持当前任务不变，但优先输出最关键、最短的一段结果，必要时主动分段，并提示我回复“继续”。",
   ].join("");
+}
+
+function compactMessagesForStage(messages, stage) {
+  if (stage !== "step3" && stage !== "step4") return messages;
+  const firstUser = messages.find((m) => m.role === "user");
+  const recent = messages.slice(-8);
+  const merged = [];
+  if (firstUser) merged.push(firstUser);
+  for (const msg of recent) {
+    if (!firstUser || msg !== firstUser) merged.push(msg);
+  }
+  return merged;
 }
 
 async function requestChatCompletion(url, key, payload) {
@@ -141,6 +195,102 @@ async function requestChatCompletion(url, key, payload) {
     });
     const text = await response.text();
     return { response, text };
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+async function streamChatCompletion(url, key, payload, res, trace) {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), LLM_REQUEST_TIMEOUT_MS);
+  let response;
+  const started = nowMs();
+  let firstTokenAt = 0;
+  let tokenChunks = 0;
+
+  try {
+    console.log(
+      `[api/chat ${trace}] upstream:start model=${payload.model} messages=${payload.messages.length} max_tokens=${payload.max_tokens}`
+    );
+    response = await fetch(url, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${key}`,
+      },
+      body: JSON.stringify({ ...payload, stream: true }),
+      signal: controller.signal,
+    });
+    console.log(
+      `[api/chat ${trace}] upstream:headers status=${response.status} after=${elapsed(started)}`
+    );
+
+    if (!response.ok) {
+      const text = await response.text();
+      let detail = {};
+      try {
+        detail = JSON.parse(text);
+      } catch (_e) {
+        detail = { snippet: text.slice(0, 500) };
+      }
+      return res.status(502).json({
+        error: detail.error?.message || detail.message || `上游错误 HTTP ${response.status}`,
+        detail,
+      });
+    }
+
+    res.status(200);
+    res.setHeader("Content-Type", "text/plain; charset=utf-8");
+    res.setHeader("Cache-Control", "no-cache, no-transform");
+    res.setHeader("X-Accel-Buffering", "no");
+    res.flushHeaders?.();
+
+    const decoder = new TextDecoder("utf-8");
+    let buffer = "";
+
+    for await (const chunk of response.body) {
+      buffer += decoder.decode(chunk, { stream: true });
+      const lines = buffer.split(/\r?\n/);
+      buffer = lines.pop() || "";
+
+      for (const line of lines) {
+        const trimmed = line.trim();
+        if (!trimmed || !trimmed.startsWith("data:")) continue;
+        const data = trimmed.slice(5).trim();
+        if (!data || data === "[DONE]") continue;
+
+        let json;
+        try {
+          json = JSON.parse(data);
+        } catch (_e) {
+          continue;
+        }
+
+        const choice = json.choices && json.choices[0];
+        const delta = choice && choice.delta;
+        const content = delta && delta.content;
+        if (typeof content === "string" && content) {
+          if (!firstTokenAt) {
+            firstTokenAt = nowMs();
+            console.log(`[api/chat ${trace}] upstream:first-token after=${elapsed(started)}`);
+          }
+          tokenChunks += 1;
+          res.write(content);
+        }
+      }
+    }
+
+    const tail = decoder.decode();
+    if (tail) {
+      buffer += tail;
+    }
+
+    console.log(
+      `[api/chat ${trace}] upstream:done chunks=${tokenChunks} total=${elapsed(started)} first_token_ms=${
+        firstTokenAt ? firstTokenAt - started : "none"
+      }`
+    );
+    return res.end();
   } finally {
     clearTimeout(timer);
   }
@@ -180,6 +330,22 @@ function parseUpstreamJson(response, text, res) {
 
 const app = express();
 
+app.use((req, res, next) => {
+  const id = Math.random().toString(36).slice(2, 8);
+  const started = nowMs();
+  req.traceId = id;
+  console.log(`[http ${id}] -> ${req.method} ${req.originalUrl}`);
+  res.on("finish", () => {
+    console.log(`[http ${id}] <- ${res.statusCode} ${req.method} ${req.originalUrl} ${elapsed(started)}`);
+  });
+  res.on("close", () => {
+    if (!res.writableEnded) {
+      console.warn(`[http ${id}] xx client-closed ${req.method} ${req.originalUrl} ${elapsed(started)}`);
+    }
+  });
+  next();
+});
+
 const CORS_ORIGIN = String(process.env.CORS_ORIGIN || "").trim();
 if (CORS_ORIGIN) {
   app.use((req, res, next) => {
@@ -205,6 +371,8 @@ app.get("/api/health", (_req, res) => {
 });
 
 app.post("/api/chat", async (req, res) => {
+  const trace = req.traceId || Math.random().toString(36).slice(2, 8);
+  const started = nowMs();
   try {
     const key = process.env.LLM_API_KEY;
     if (!key) {
@@ -238,47 +406,37 @@ app.post("/api/chat", async (req, res) => {
     const url = `${base}/chat/completions`;
     const model = process.env.LLM_MODEL || "gpt-4o-mini";
 
-    const currentStage = inferCurrentStage(sanitized);
-    const baseMessages = [{ role: "system", content: getSystemPrompt(currentStage) }, ...sanitized];
+    const currentStage = inferTargetStage(sanitized);
+    const stageMessages = compactMessagesForStage(sanitized, currentStage);
+    const chunkInstruction = buildChunkInstruction(currentStage);
+    const baseMessages = [
+      { role: "system", content: getSystemPrompt(currentStage) },
+      ...stageMessages,
+      ...(chunkInstruction ? [{ role: "user", content: chunkInstruction }] : []),
+    ];
     const payload = {
       model,
       messages: baseMessages,
       temperature: 1,
       max_tokens: Number(process.env.LLM_MAX_TOKENS) || 8192,
     };
+    console.log(
+      `[api/chat ${trace}] prepared stage=${currentStage} raw_messages=${raw.length} sanitized=${sanitized.length} prompt_messages=${baseMessages.length}`
+    );
 
     try {
-      const first = await requestChatCompletion(url, key, payload);
-      const content = parseUpstreamJson(first.response, first.text, res);
-      if (content == null) return;
-      return res.json({ message: { role: "assistant", content } });
+      return await streamChatCompletion(url, key, payload, res, trace);
     } catch (e) {
-      if (e && e.name !== "AbortError") throw e;
-    }
-
-    console.warn("[api/chat] first request timed out, retrying with chunked output");
-    const retryPayload = {
-      ...payload,
-      messages: [
-        ...baseMessages,
-        {
-          role: "user",
-          content: buildChunkRetryHint(sanitized),
-        },
-      ],
-      max_tokens: Math.min(Number(process.env.LLM_MAX_TOKENS) || 8192, 4096),
-    };
-
-    try {
-      const retry = await requestChatCompletion(url, key, retryPayload);
-      const retryContent = parseUpstreamJson(retry.response, retry.text, res);
-      if (retryContent == null) return;
-      return res.json({ message: { role: "assistant", content: retryContent } });
-    } catch (e) {
+      console.warn(`[api/chat ${trace}] error after=${elapsed(started)} name=${e && e.name} message=${e && e.message}`);
       if (e && e.name === "AbortError") {
+        if (res.headersSent) {
+          return res.end(
+            "\n\n请求已等待 5 分钟后中断。如果内容还没完整，请重新发送“继续”再试一次。"
+          );
+        }
         return res.status(504).json({
           error:
-            "请求超时：系统已等待 5 分钟并自动尝试改为分段输出，但上游仍未及时返回。你可以重新试一次；若仍较慢，建议把正文按 10 到 15 楼一段继续生成。",
+            "请求超时：系统已等待 5 分钟，但上游仍未及时返回。你可以重新试一次；若仍较慢，建议把正文按 20 到 25 楼一段继续生成。",
         });
       }
       throw e;
