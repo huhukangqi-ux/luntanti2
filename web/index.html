@@ -1,0 +1,236 @@
+﻿<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>论坛小说工作室</title>
+  <!-- 静态页与 API 不同源部署：在加载 app.js 之前增加一行
+       <script>window.SHEMEI_API_BASE = "https://你的后端域名";</script>
+       （无尾斜杠）；后端需对浏览器开启 CORS。同源部署可省略。 -->
+  <link rel="stylesheet" href="styles.css" />
+  <link rel="stylesheet" href="figma-pixel.css" />
+</head>
+<body class="fp-body">
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+  <div class="fp-canvas">
+    <header class="fp-nav" aria-label="主导航">
+      <div class="fp-nav-left">
+        <span class="fp-brand">论坛小说工作室</span>
+        <div class="fp-pills" role="tablist">
+          <button type="button" class="fp-pill fp-pill--active" data-fp-route="forge" aria-selected="true">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .274 3.086 2.29 6 6 6 0 5-3 7-6 7s-6-3-6-5a9 9 0 0 1 15-6.73"/></svg>
+            The Forge
+          </button>
+          <button type="button" class="fp-pill" data-fp-route="vault" aria-selected="false">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
+            The Vault
+          </button>
+          <button type="button" class="fp-pill" data-fp-route="nexus" aria-selected="false">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
+            The Nexus
+          </button>
+        </div>
+      </div>
+    </header>
+
+    <main class="fp-main">
+      <!-- Forge — Figma node 1:2 -->
+      <section class="fp-page fp-page--active" data-fp-page="forge" aria-label="The Forge">
+        <div class="fp-forge-main">
+          <div class="fp-forge-stack">
+            <div class="fp-hero-top">
+              <div class="fp-hero-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 2l1.91 5.82L20 10l-5.91 2.09L12 18l-1.91-5.91L4 10l6.09-2.18L12 2z" fill="currentColor"/><path d="M19 15l-.89 2.71L15.6 17.6l2.71.89-.89 2.71 2.14-2.07 2.14 2.07-.89-2.71 2.71-.89-2.71-.89z" fill="currentColor" opacity=".9"/></svg>
+              </div>
+              <h1 class="fp-h2">开始创作你的论坛体小说</h1>
+              <p class="fp-lead">直接输入或上传灵感，让 AI 帮你完成从创意到成品的全过程</p>
+            </div>
+            <div class="fp-form-block">
+              <div class="fp-input-row">
+                <svg class="fp-input-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
+                <label class="visually-hidden" for="forge-inspire-input">灵感</label>
+                <textarea
+                  id="forge-inspire-input"
+                  class="fp-forge-textarea"
+                  rows="2"
+                  placeholder="输入你的灵感..."
+                  autocomplete="off"
+                ></textarea>
+                <button type="button" id="btn-start-create" class="fp-start-btn" aria-label="开始创作">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M22 2L11 13"/><path d="M22 2l-7 20-4-9-9-4 20-7z"/></svg>
+                  开始创作
+                </button>
+              </div>
+            </div>
+
+            <section class="studio-card fp-forge-chat" id="forge-chat-panel" aria-label="创作对话">
+              <div class="forge-chat-head">
+                <h2 class="forge-chat-title">对话</h2>
+                <p id="forge-api-status" class="forge-api-status muted-pill" role="status">正在检测 API…</p>
+              </div>
+              <p class="forge-chat-intro">直接上传或输入灵感后，点「开始创作」即可进入对话；助手会按 Step1→2→3 推进，Step4 是 AI 感优化 / 人性化去痕阶段，可按需要跳过。你可以回复「确认」或直接提出修改意见。再次点「开始创作」会清空本会话。</p>
+              <div class="forge-route-a-bar" aria-live="polite">
+                <span id="forge-step-badge" class="forge-step-pill">路线 A · 待定</span>
+              </div>
+              <div class="forge-chat-log chat-log" id="api-chat-log" aria-live="polite"></div>
+              <label class="visually-hidden" for="api-user-input">回复</label>
+              <textarea id="api-user-input" class="forge-chat-input" rows="3" placeholder="回复助手，例如「确认」或修改要求…"></textarea>
+              <div class="forge-chat-actions">
+                <button type="button" id="btn-api-confirm" class="secondary">确认</button>
+                <button type="button" id="btn-api-send">发送</button>
+              </div>
+              <pre class="api-error forge-api-error" id="api-error" hidden></pre>
+            </section>
+
+            <section id="compose-export-image" class="thread-image-section thread-studio fp-thread-export" aria-label="论坛体导出长图">
+              <div class="tt-wrap-inner">
+                <div class="thread-section-head">
+                  <h2 class="thread-section-title">论坛体 · 导出长图</h2>
+                  <p class="hint-box hint-box-studio">
+                    浏览器内渲染（html2canvas）。支持 <strong>【1L｜昵称】</strong> 分段 · <code>N楼：</code> 引用 · 导出 <strong>9:16</strong> PNG 切片。
+                  </p>
+                </div>
+                <div class="tt-layout">
+                  <div class="studio-card tt-card-studio">
+                    <label class="field" for="tt-input">粘贴论坛体全文</label>
+                    <textarea id="tt-input" placeholder="粘贴定稿正文或从上方助手回复复制……"></textarea>
+                    <div class="actions forge-tt-actions">
+                      <button type="button" id="tt-render" class="btn-studio-ghost">刷新预览</button>
+                      <button type="button" id="tt-save-png">下载 PNG</button>
+                      <button type="button" id="tt-save-novel" class="btn-studio-secondary">储存小说</button>
+                      <button type="button" id="tt-clear" class="btn-studio-secondary">清空全文</button>
+                    </div>
+                    <p id="tt-busy"></p>
+                  </div>
+                  <div>
+                    <p class="preview-label">预览</p>
+                    <div id="tt-capture-shell">
+                      <div id="tt-capture-root"></div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </section>
+            <pre id="prompt-preview" hidden></pre>
+          </div>
+        </div>
+      </section>
+
+      <!-- Vault — Figma node 2:2 -->
+      <section class="fp-page" data-fp-page="vault" aria-label="The Vault">
+        <div class="fp-vault-main">
+          <div class="fp-vault-head">
+            <div class="fp-vault-titles">
+              <h1>The Vault</h1>
+              <p>管理你的创作资产与灵感碎片</p>
+            </div>
+          </div>
+          <div class="fp-stats-row">
+            <button type="button" class="fp-stat fp-stat--button" id="vault-works-card" aria-label="查看已完成作品">
+              <div class="fp-stat-ico fp-stat-ico--blue" aria-hidden="true"></div>
+              <div>
+                <div class="fp-stat-num" id="vault-stat-works">0</div>
+                <div class="fp-stat-label">已完成作品</div>
+              </div>
+            </button>
+            <div class="fp-stat">
+              <div class="fp-stat-ico fp-stat-ico--amber" aria-hidden="true"></div>
+              <div>
+                <div class="fp-stat-num" id="vault-stat-drafts">0</div>
+                <div class="fp-stat-label">灵感草稿</div>
+              </div>
+            </div>
+            <div class="fp-stat">
+              <div class="fp-stat-ico fp-stat-ico--green" aria-hidden="true"></div>
+              <div>
+                <div class="fp-stat-num" id="vault-stat-chars">0</div>
+                <div class="fp-stat-label">总字数</div>
+              </div>
+            </div>
+          </div>
+          <div id="library-list" class="fp-vault-list fp-vault-list--live"></div>
+        </div>
+      </section>
+
+      <!-- Nexus — Figma node 3:2 -->
+      <section class="fp-page" data-fp-page="nexus" aria-label="The Nexus">
+        <div class="fp-nexus-surface">
+          <div class="fp-nexus-hero">
+            <div class="fp-hero-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></svg>
+            </div>
+            <h1 class="fp-h2">The Nexus</h1>
+            <p class="fp-lead">发现并嵌入垂直领域的创作技能，让AI按照专业逻辑生成</p>
+          </div>
+
+          <div class="fp-skill-grid fp-skill-grid--repos">
+            <a class="fp-skill-card fp-skill-card--repo" href="https://github.com/EnderRomantice/horror-weird-fiction-skill" target="_blank" rel="noopener noreferrer" data-fp-tags="惊悚恐怖,怪谈,horror">
+              <div class="fp-skill-head">
+                <div class="fp-skill-head-inner">
+                  <div class="fp-skill-emoji" aria-hidden="true">👻</div>
+                  <div class="fp-skill-titles">
+                    <h3>horror-weird-fiction-skill</h3>
+                    <p>EnderRomantice</p>
+                  </div>
+                </div>
+                <div class="fp-skill-rate" aria-label="6 stars">
+                  <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+                  6
+                </div>
+              </div>
+              <p class="fp-skill-desc">用于创作恐怖风格故事的skill</p>
+              <div class="fp-skill-foot">
+                <span class="fp-skill-uses">GitHub Repository</span>
+                <span class="fp-skill-cta">查看 GitHub</span>
+              </div>
+            </a>
+            <a class="fp-skill-card fp-skill-card--repo" href="https://github.com/PenglongHuang/chinese-novelist-skill" target="_blank" rel="noopener noreferrer" data-fp-tags="中文小说,长篇小说,novelist">
+              <div class="fp-skill-head">
+                <div class="fp-skill-head-inner">
+                  <div class="fp-skill-emoji" aria-hidden="true">✍️</div>
+                  <div class="fp-skill-titles">
+                    <h3>chinese-novelist-skill</h3>
+                    <p>PenglongHuang</p>
+                  </div>
+                </div>
+                <div class="fp-skill-rate" aria-label="1510 stars">
+                  <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+                  1510
+                </div>
+              </div>
+              <p class="fp-skill-desc">AI 驱动的中文小说创作助手。三层递进式智能问答、跨会话偏好记忆、中断续写、每章必留悬念钩子、自动校验修复。</p>
+              <div class="fp-skill-foot">
+                <span class="fp-skill-uses">GitHub Repository</span>
+                <span class="fp-skill-cta">查看 GitHub</span>
+              </div>
+            </a>
+          </div>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <footer class="fp-footer-note">
+    设计参考
+    <a href="https://www.figma.com/design/SQBdf4n77P4dc9vY8OOroK/%E8%AE%BA%E5%9D%9B%E4%BD%93?node-id=0-1" target="_blank" rel="noopener noreferrer">Figma Design</a>
+    · <a href="index.legacy.html">旧版工作台（含 API 对话与长图导出）</a>
+  </footer>
+  <div id="vault-preview-modal" class="vault-preview-modal" hidden aria-hidden="true">
+    <div class="vault-preview-backdrop" data-vault-preview-close></div>
+    <div class="vault-preview-panel" role="dialog" aria-modal="true" aria-label="已完成作品预览">
+      <button type="button" class="vault-preview-close" data-vault-preview-close aria-label="关闭预览">×</button>
+      <div id="vault-preview-shell" class="vault-preview-shell">
+        <div id="vault-preview-root"></div>
+      </div>
+    </div>
+  </div>
+  <script src="figma-pixel.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+  <script src="app.js"></script>
+  <script src="thread-to-image.js"></script>
+</body>
+</html>
+
+
+
+

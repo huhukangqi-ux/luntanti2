@@ -1,0 +1,284 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>论坛小说工作室</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body class="studio-app frontend-only">
+  <header class="studio-header">
+    <a class="studio-brand" href="#compose">论坛小说工作室</a>
+    <nav class="studio-nav-pills" aria-label="主导航">
+      <a class="nav-pill" href="#compose" data-route="compose">
+        <svg class="nav-pill-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .274 3.086 2.29 6 6 6 0 5-3 7-6 7s-6-3-6-5a9 9 0 0 1 15-6.73"/></svg>
+        The Forge
+      </a>
+      <a class="nav-pill" href="#library" data-route="library">
+        <svg class="nav-pill-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
+        The Vault
+      </a>
+      <a class="nav-pill" href="#explore" data-route="explore">
+        <svg class="nav-pill-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
+        The Nexus
+      </a>
+    </nav>
+    <div class="studio-header-right">
+      <a class="studio-help-link" href="#compose-help">帮助</a>
+      <a class="studio-help-link studio-help-link--sub" href="#compose-export-image">长图</a>
+      <button type="button" class="studio-avatar-ai" aria-label="AI" title="本地工具">AI</button>
+    </div>
+  </header>
+
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+
+  <main class="studio-main">
+    <!-- The Forge -->
+    <div id="page-compose" class="page studio-page forge-page">
+      <div class="forge-inner wrap">
+        <div class="forge-hero">
+          <div class="forge-hero-icon" aria-hidden="true">
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="none"><path d="M12 2l1.91 5.82L20 10l-5.91 2.09L12 18l-1.91-5.91L4 10l6.09-2.18L12 2z" fill="currentColor"/><path d="M19 15l-.89 2.71L15.6 17.6l2.71.89-.89 2.71 2.14-2.07 2.14 2.07-.89-2.71 2.71-.89-2.71-.89z" fill="currentColor" opacity=".85"/></svg>
+          </div>
+          <h1 class="forge-hero-title">开始创作你的论坛体小说</h1>
+          <p class="forge-hero-desc">输入 <span class="cmd-chip">/xiaoshuo</span> 加上你的灵感，让 AI 帮你完成从创意到成品的全过程</p>
+        </div>
+
+        <input type="file" id="compose-file" accept=".txt,.md,text/plain,text/markdown" hidden />
+
+        <div class="forge-input-shell studio-card forge-form-card">
+          <div class="forge-form-row" role="group" aria-label="灵感输入">
+            <div class="forge-form-icon" aria-hidden="true">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
+            </div>
+            <label class="forge-input-label visually-hidden" for="forge-inspire-input">灵感</label>
+            <textarea
+              id="forge-inspire-input"
+              class="forge-inspire-textarea"
+              rows="3"
+              placeholder="/xiaoshuo 输入你的灵感..."
+              autocomplete="off"
+            ></textarea>
+            <button type="button" id="btn-start-create" class="forge-send-btn">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 2L11 13"/><path d="M22 2l-7 20-4-9-9-4 20-7z"/></svg>
+              <span>开始创作</span>
+            </button>
+          </div>
+          <p class="forge-hotkey-hint">提示：按 Cmd+K / Ctrl+K 快速唤起命令输入（选择本地灵感文件）</p>
+          <div
+            class="compose-dropzone forge-dropzone forge-dropzone--secondary"
+            id="compose-dropzone"
+            role="button"
+            tabindex="0"
+            aria-label="选择或拖入文本文件"
+          >
+            <span class="forge-placeholder-soft">📄</span>
+            <span class="forge-dropzone-lines">
+              <span class="compose-dropzone-title">或拖拽 .txt / .md 到此处上传</span>
+              <span class="forge-upload-sub">本地读取 · 最大 2MB · 不上传云端</span>
+            </span>
+          </div>
+          <p id="compose-file-name" class="compose-file-name forge-file-done" hidden></p>
+          <div class="forge-quick-actions">
+            <button type="button" id="btn-copy" class="btn-studio-ghost">复制 Cursor 指令</button>
+            <button type="button" id="btn-save" class="btn-studio-secondary">保存到本地</button>
+          </div>
+        </div>
+
+        <p id="compose-help" class="forge-dev-note">本地多轮创作需运行 <code>server/</code> 并配置 <code>LLM_API_KEY</code>；对话区会按仓库 <span class="cmd-chip">skill.md</span> + <span class="cmd-chip">method.md</span> 推进。</p>
+
+        <section class="forge-chat-panel studio-card" id="forge-chat-panel" aria-label="后台创作对话">
+          <div class="forge-chat-head">
+            <h2 class="forge-chat-title">对话</h2>
+            <p id="forge-api-status" class="forge-api-status muted-pill" role="status" aria-live="polite">正在检测 API…</p>
+          </div>
+          <p class="forge-chat-intro">路线 <strong>A · 纯对话</strong>：<code>server/</code> 将 <strong>skill + method</strong> 并入系统提示，按 Step1→2→3（可选 Step4）闸门推进；请用自然语言回复「确认」或修改意见。再次点击<strong>开始创作</strong>会清空本会话并重新发起首轮。</p>
+          <div class="forge-route-a-bar" aria-live="polite">
+            <span id="forge-step-badge" class="forge-step-pill">路线 A · 待定</span>
+            <div class="forge-quick-replies" role="group" aria-label="快捷回复（直接发送一条用户消息）">
+              <button type="button" class="forge-quick-reply" id="btn-quick-confirm" disabled title="发送「确认」">确认</button>
+              <button type="button" class="forge-quick-reply" id="btn-quick-skip-step4" disabled title="若已进入或即将进入 Step4">跳过 Step4</button>
+              <button type="button" class="forge-quick-reply forge-quick-reply--ghost" id="btn-quick-focus-reply" disabled title="在下方输入框手写修改">自己输入</button>
+            </div>
+          </div>
+          <div class="forge-chat-log chat-log" id="api-chat-log" aria-live="polite" aria-label="对话记录"></div>
+          <label class="forge-chat-label visually-hidden" for="api-user-input">回复</label>
+          <textarea id="api-user-input" class="forge-chat-input" rows="3" placeholder="回复助手：例如「确认 Step1」「把基调改轻松一点」⋯"></textarea>
+          <div class="forge-chat-actions">
+            <button type="button" id="btn-api-send">发送</button>
+            <button type="button" id="btn-api-copy-last" class="secondary">复制末条助手</button>
+            <button type="button" id="btn-api-clear" class="secondary danger">清空会话</button>
+          </div>
+          <pre class="api-error forge-api-error" id="api-error" hidden></pre>
+        </section>
+
+        <div class="forge-suggest-grid">
+          <button type="button" class="forge-suggest-card" id="forge-sample-inspire">
+            <span class="forge-suggest-icon" aria-hidden="true">💡</span>
+            <span class="forge-suggest-head">灵感示例</span>
+            <span class="forge-suggest-body">一个普通打工人意外获得能看到别人剩余寿命的能力</span>
+          </button>
+          <div class="forge-suggest-card forge-suggest-card--static">
+            <span class="forge-suggest-icon" aria-hidden="true">🔥</span>
+            <span class="forge-suggest-head">热门类型</span>
+            <span class="forge-suggest-body">都市吃瓜、心理悬疑、恐怖志异、职场复仇</span>
+          </div>
+        </div>
+
+        <section class="forge-preview studio-card studio-card-muted" aria-label="指令预览">
+          <h2 class="section-label forge-section-cap">可复制预览</h2>
+          <pre class="code-preview forge-code-preview" id="prompt-preview"></pre>
+        </section>
+
+        <p class="forge-jump-down"><a href="#compose-export-image">跳到论坛体长图导出 →</a></p>
+      </div>
+
+      <section id="compose-export-image" class="thread-image-section thread-studio" aria-label="论坛体导出长图">
+        <div class="tt-wrap-inner">
+          <div class="thread-section-head">
+            <h2 class="thread-section-title">论坛体 · 导出长图</h2>
+            <p class="hint-box hint-box-studio">
+              浏览器内渲染（html2canvas）。支持 <strong>【1L｜昵称】</strong> 分段 · <code>N楼：</code> 引用 · 导出 <strong>9:16</strong> PNG 切片。
+            </p>
+          </div>
+          <div class="tt-layout">
+            <div class="studio-card tt-card-studio">
+              <label class="field" for="tt-input">粘贴论坛体全文</label>
+              <textarea id="tt-input" placeholder="粘贴定稿正文或从上图复制……"></textarea>
+              <div class="actions forge-tt-actions">
+                <button type="button" id="tt-sample" class="btn-studio-secondary">填入示例</button>
+                <button type="button" id="tt-render" class="btn-studio-ghost">刷新预览</button>
+                <button type="button" id="tt-save-png">下载 PNG</button>
+              </div>
+              <p id="tt-busy"></p>
+            </div>
+            <div>
+              <p class="preview-label">预览</p>
+              <div id="tt-capture-shell">
+                <div id="tt-capture-root"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+    </div>
+
+    <!-- The Vault -->
+    <div id="page-library" class="page studio-page vault-page">
+      <div class="wrap vault-wrap">
+        <div class="vault-page-head">
+          <div>
+            <h1 class="vault-page-title">The Vault</h1>
+            <p class="vault-page-sub">管理你的创作资产与灵感碎片</p>
+            <p class="vault-page-sub vault-page-sub--faint">数据仅存本机浏览器</p>
+          </div>
+          <div class="vault-head-actions">
+            <a class="btn-vault-primary" href="#compose">生成小说</a>
+            <button type="button" class="btn-vault-secondary" id="btn-vault-scroll-drafts">灵感草稿</button>
+          </div>
+        </div>
+        <div class="vault-head-more">
+          <button type="button" id="btn-lib-export" class="btn-vault-link">导出 JSON</button>
+          <span class="vault-head-dot">·</span>
+          <button type="button" id="btn-lib-import" class="btn-vault-link">导入 JSON</button>
+          <input type="file" id="lib-import-file" accept=".json,application/json" tabindex="-1" aria-hidden="true" hidden />
+        </div>
+
+        <div class="vault-stats" id="vault-stats">
+          <div class="vault-stat-card vault-stat--blue">
+            <div class="vault-stat-icon">📄</div>
+            <div class="vault-stat-num" id="vault-stat-works">0</div>
+            <div class="vault-stat-label">已完成作品</div>
+          </div>
+          <div class="vault-stat-card vault-stat--amber">
+            <div class="vault-stat-icon">💡</div>
+            <div class="vault-stat-num" id="vault-stat-drafts">0</div>
+            <div class="vault-stat-label">灵感草稿</div>
+          </div>
+          <div class="vault-stat-card vault-stat--green">
+            <div class="vault-stat-icon">⏱</div>
+            <div class="vault-stat-num" id="vault-stat-chars">0</div>
+            <div class="vault-stat-label">总字数</div>
+          </div>
+        </div>
+
+        <div id="library-list" class="vault-list"></div>
+      </div>
+    </div>
+
+    <!-- The Nexus -->
+    <div id="page-explore" class="page studio-page nexus-page">
+      <div class="wrap nexus-wrap wide">
+        <div class="nexus-hero">
+          <div class="nexus-hero-icon">
+            <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
+          </div>
+          <h1 class="nexus-hero-title">The Nexus</h1>
+          <p class="nexus-hero-desc">发现并嵌入垂直领域的创作技能，让 AI 按照专业逻辑生成</p>
+        </div>
+
+        <div class="nexus-filters" role="tablist" aria-label="技能分类">
+          <button type="button" class="nexus-filter-chip is-active" data-nexus-cat="all">全部</button>
+          <button type="button" class="nexus-filter-chip" data-nexus-cat="悬疑推理">悬疑推理</button>
+          <button type="button" class="nexus-filter-chip" data-nexus-cat="都市情感">都市情感</button>
+          <button type="button" class="nexus-filter-chip" data-nexus-cat="惊悚恐怖">惊悚恐怖</button>
+          <button type="button" class="nexus-filter-chip" data-nexus-cat="职场商战">职场商战</button>
+          <button type="button" class="nexus-filter-chip" data-nexus-cat="幻想冒险">幻想冒险</button>
+        </div>
+
+        <div class="nexus-grid">
+          <a
+            class="skill-tile skill-tile--purple"
+            href="#compose"
+            data-nexus-match="悬疑推理,都市情感,都市吃瓜,惊悚恐怖,职场商战,幻想冒险"
+          >
+            <div class="skill-tile-head">
+              <span class="skill-tile-brand">📝</span>
+              <div>
+                <span class="skill-tile-title">社媒论坛体小说</span>
+                <span class="skill-tile-cat">都市吃瓜 · Skill</span>
+              </div>
+              <span class="skill-tile-score">★ 4.9</span>
+            </div>
+            <p class="skill-tile-desc">触发词 /xiaoshuo，仓库内四层流程澄清 + Step1～4；上传素材一页复制，底栏导出仿真贴文长图。</p>
+            <div class="skill-tile-foot">
+              <span class="skill-tile-uses">本机即用</span>
+              <span class="skill-tile-cta skill-tile-cta--purple">进入创作</span>
+            </div>
+          </a>
+
+          <div class="skill-tile skill-tile--muted skill-tile--placeholder" data-nexus-match="">
+            <div class="skill-tile-head">
+              <span class="skill-tile-brand skill-tile-brand--muted">⋯</span>
+              <div>
+                <span class="skill-tile-title">更多技能</span>
+                <span class="skill-tile-cat">占位</span>
+              </div>
+              <span class="skill-tile-score">—</span>
+            </div>
+            <p class="skill-tile-desc">心理学悬疑、惊悚志异等节奏包将在此处接入，可复制 method 概要或 MCP 声明。</p>
+            <div class="skill-tile-foot">
+              <span class="skill-tile-uses">敬请期待</span>
+              <span class="skill-tile-cta skill-tile-cta--ghost">不可用</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="nexus-floating-bar" role="status">
+        <span class="nexus-floating-label">当前已加载：</span>
+        <span class="nexus-floating-pill">社媒论坛体 · /xiaoshuo</span>
+      </div>
+    </div>
+  </main>
+
+  <footer class="studio-footer wrap">
+    <a href="./">新版主页（Figma）</a> · 论坛小说工作室 · 数据仅存本机 · <a href="#compose-export-image">长图导出</a>
+    <span class="studio-footer-ref"> · 设计：<a href="https://www.figma.com/design/SQBdf4n77P4dc9vY8OOroK/%E8%AE%BA%E5%9D%9B%E4%BD%93?node-id=0-1" target="_blank" rel="noopener noreferrer">Figma Design · 论坛体</a> · <a href="https://www.figma.com/make/NJG7lxUJHccH9DhARoln8U/%E7%A4%BE%E5%AA%92%E5%B0%8F%E8%AF%B4%E5%88%9B%E4%BD%9C%E5%B7%A5%E4%BD%9C%E5%8F%B0?t=LYcnDezpSXdFnC8a-20&amp;fullscreen=1" target="_blank" rel="noopener noreferrer">Make</a></span>
+  </footer>
+
+  <script src="app.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+  <script src="thread-to-image.js"></script>
+</body>
+</html>

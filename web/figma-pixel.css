@@ -1,0 +1,1114 @@
+﻿/* Figma Design「论坛体」三屏静态还原 — 令牌自 MCP get_figma_data */
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap");
+
+:root {
+  --fp-white: #ffffff;
+  --fp-bg: #f9fafb;
+  --fp-border: #e5e7eb;
+  --fp-text: #101828;
+  --fp-muted: #4a5565;
+  --fp-hint: #6a7282;
+  --fp-blue: #3b82f6;
+  --fp-input-border: #d1d5dc;
+  --fp-chip-text: #364153;
+  --fp-nexus-grad: linear-gradient(135deg, #f9fafb 0%, #eff6ff 100%);
+  --fp-shadow-card: 0 4px 6px -4px rgba(0, 0, 0, 0.1), 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+  --fp-shadow-btn: 0 1px 2px -1px rgba(0, 0, 0, 0.1), 0 1px 3px 0 rgba(0, 0, 0, 0.1);
+  --fp-float-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+  --fp-canvas: 761px;
+  --fp-hero-grad: linear-gradient(
+    135deg,
+    #3b82f6 0%,
+    #4d87eb 7%,
+    #5d8ce1 14%,
+    #6b8fd6 21%,
+    #7993ca 29%,
+    #8696bf 36%,
+    #9398b3 43%,
+    #a09aa7 50%,
+    #ad9c9a 57%,
+    #b99d8c 64%,
+    #c59e7d 71%,
+    #d19f6c 79%,
+    #dd9f58 86%,
+    #e99f3f 93%,
+    #f59e0b 100%
+  );
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+.fp-body {
+  margin: 0;
+  min-height: 100vh;
+  font-family: Inter, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  background: var(--fp-bg);
+  color: var(--fp-text);
+  -webkit-font-smoothing: antialiased;
+}
+
+.fp-canvas {
+  width: 100%;
+  max-width: var(--fp-canvas);
+  margin: 0 auto;
+  min-height: 100vh;
+  background: var(--fp-bg);
+  display: flex;
+  flex-direction: column;
+}
+
+/* —— 顶栏 —— */
+.fp-nav {
+  flex-shrink: 0;
+  height: 69px;
+  padding: 16px 24px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: var(--fp-white);
+  border-bottom: 1px solid var(--fp-border);
+}
+
+.fp-nav-left {
+  display: flex;
+  align-items: center;
+  gap: 32px;
+  min-width: 0;
+}
+
+.fp-brand {
+  font-weight: 600;
+  font-size: 20px;
+  line-height: 28px;
+  color: var(--fp-text);
+  letter-spacing: -0.02em;
+  white-space: nowrap;
+}
+
+.fp-pills {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.fp-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  height: 36px;
+  padding: 8px 16px;
+  border: none;
+  border-radius: 10px;
+  background: transparent;
+  font-family: inherit;
+  font-weight: 500;
+  font-size: 14px;
+  line-height: 20px;
+  color: var(--fp-muted);
+  cursor: pointer;
+}
+
+.fp-pill svg {
+  flex-shrink: 0;
+}
+
+.fp-pill--active {
+  background: var(--fp-blue);
+  color: var(--fp-white);
+}
+
+.fp-pill--active svg {
+  stroke: currentColor;
+}
+
+.fp-pill:not(.fp-pill--active) svg {
+  stroke: var(--fp-muted);
+}
+
+.fp-nav-right {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-shrink: 0;
+}
+
+.fp-help {
+  border: none;
+  background: none;
+  font-family: inherit;
+  font-weight: 500;
+  font-size: 14px;
+  line-height: 20px;
+  color: var(--fp-muted);
+  cursor: pointer;
+  padding: 8px 0;
+  min-width: 44px;
+}
+
+a.fp-help-link {
+  text-decoration: none;
+  color: inherit;
+}
+
+a.fp-help-link:hover {
+  color: var(--fp-text);
+}
+
+.fp-ai {
+  width: 32px;
+  height: 32px;
+  border-radius: 999px;
+  border: none;
+  background: var(--fp-blue);
+  color: var(--fp-white);
+  font-weight: 500;
+  font-size: 14px;
+  line-height: 20px;
+  cursor: default;
+}
+
+/* —— 页面切换 —— */
+.fp-main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.fp-page {
+  display: none;
+  flex: 1;
+  flex-direction: column;
+}
+
+.fp-page--active {
+  display: flex;
+}
+
+/* ========== Forge ========== */
+.fp-forge-main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 96px 24px;
+}
+
+.fp-forge-stack {
+  width: 100%;
+  max-width: 672px;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.fp-hero-top {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 12px;
+}
+
+.fp-hero-icon {
+  width: 64px;
+  height: 64px;
+  border-radius: 999px;
+  background: var(--fp-hero-grad);
+  display: grid;
+  place-items: center;
+  box-shadow: var(--fp-shadow-card);
+}
+
+.fp-hero-icon svg {
+  width: 32px;
+  height: 32px;
+  color: var(--fp-white);
+}
+
+.fp-h2 {
+  margin: 0;
+  font-weight: 600;
+  font-size: 24px;
+  line-height: 32px;
+  color: var(--fp-text);
+}
+
+.fp-lead {
+  margin: 0;
+  max-width: 560px;
+  font-weight: 400;
+  font-size: 16px;
+  line-height: 24px;
+  color: var(--fp-muted);
+}
+
+.fp-form-block {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.fp-input-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 16px;
+  background: var(--fp-white);
+  border: 2px solid var(--fp-input-border);
+  border-radius: 10px;
+}
+
+.fp-input-row svg.fp-input-icon {
+  flex-shrink: 0;
+  width: 20px;
+  height: 20px;
+  color: var(--fp-muted);
+  margin-top: 2px;
+}
+
+.fp-forge-textarea {
+  flex: 1;
+  min-width: 0;
+  min-height: 48px;
+  max-height: 120px;
+  padding: 6px 4px;
+  border: none;
+  background: transparent;
+  font-family: inherit;
+  font-size: 15px;
+  line-height: 22px;
+  color: var(--fp-text);
+  resize: vertical;
+}
+
+.fp-forge-textarea::placeholder {
+  color: var(--fp-hint);
+}
+
+.fp-forge-textarea:focus {
+  outline: none;
+}
+
+.fp-input-fake {
+  flex: 1;
+  font-size: 16px;
+  line-height: 24px;
+  color: var(--fp-hint);
+  text-align: left;
+}
+
+.fp-start-btn {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  height: 36px;
+  padding: 8px 16px;
+  border: none;
+  border-radius: 8px;
+  background: var(--fp-blue);
+  color: var(--fp-white);
+  font-family: inherit;
+  font-weight: 500;
+  font-size: 14px;
+  line-height: 20px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.fp-start-btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.fp-start-btn svg {
+  width: 16px;
+  height: 16px;
+}
+
+.fp-forge-hint {
+  margin: 0;
+  font-size: 12px;
+  line-height: 16px;
+  color: var(--fp-hint);
+}
+
+.fp-compose-dropzone {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  border-radius: 8px;
+  border: 1px dashed var(--fp-input-border);
+  background: #fafafa;
+  font-size: 13px;
+  line-height: 18px;
+  color: var(--fp-muted);
+  cursor: pointer;
+}
+
+.fp-compose-dropzone.is-drag {
+  border-color: var(--fp-blue);
+  background: #eff6ff;
+}
+
+.fp-compose-file-name {
+  margin: 0;
+  font-size: 12px;
+  line-height: 16px;
+  color: var(--fp-blue);
+}
+
+.fp-compose-file-name--error {
+  color: #dc2626;
+  font-weight: 500;
+}
+
+body.fp-body #toast.toast {
+  z-index: 99999;
+}
+
+.fp-forge-inline-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.fp-btn-ghost {
+  border: 1px solid var(--fp-border);
+  background: var(--fp-white);
+  border-radius: 8px;
+  padding: 6px 12px;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--fp-muted);
+  cursor: pointer;
+}
+
+.fp-btn-ghost:hover {
+  border-color: var(--fp-input-border);
+  color: var(--fp-text);
+}
+
+.fp-dev-hint {
+  margin: 0;
+  font-size: 12px;
+  line-height: 18px;
+  color: var(--fp-hint);
+}
+
+.fp-forge-chat.studio-card {
+  max-width: 100%;
+  margin-top: 4px;
+}
+
+.fp-forge-chat .forge-chat-log.chat-log {
+  max-height: min(40vh, 18rem);
+}
+
+.fp-mini-card--btn {
+  border: 1px solid var(--fp-border);
+  cursor: pointer;
+  text-align: left;
+  font: inherit;
+  color: inherit;
+}
+
+.fp-mini-card--btn:hover {
+  border-color: var(--fp-input-border);
+  box-shadow: var(--fp-shadow-card);
+}
+
+.fp-two-cards {
+  display: flex;
+  gap: 16px;
+  width: 100%;
+}
+
+.fp-mini-card {
+  flex: 1;
+  min-width: 0;
+  max-width: 328px;
+  padding: 17px;
+  background: var(--fp-white);
+  border: 1px solid var(--fp-border);
+  border-radius: 10px;
+}
+
+.fp-mini-card h3 {
+  margin: 0 0 8px;
+  font-weight: 500;
+  font-size: 18px;
+  line-height: 27px;
+  color: var(--fp-text);
+}
+
+.fp-mini-card p {
+  margin: 0;
+  font-size: 14px;
+  line-height: 20px;
+  color: var(--fp-muted);
+}
+
+@media (max-width: 700px) {
+  .fp-two-cards {
+    flex-direction: column;
+  }
+
+  .fp-mini-card {
+    max-width: none;
+  }
+
+  .fp-nav-left {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
+  }
+}
+
+/* ========== Vault ========== */
+.fp-vault-main {
+  flex: 1;
+  padding: 24px 39px 0 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.fp-vault-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.fp-vault-titles h1 {
+  margin: 0 0 4px;
+  font-weight: 600;
+  font-size: 30px;
+  line-height: 36px;
+  color: var(--fp-text);
+}
+
+.fp-vault-titles p {
+  margin: 0;
+  font-size: 16px;
+  line-height: 24px;
+  color: var(--fp-muted);
+}
+
+.fp-seg {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px;
+  background: #f3f4f6;
+  border-radius: 10px;
+}
+
+.fp-seg button {
+  height: 36px;
+  padding: 0 16px;
+  border: none;
+  border-radius: 8px;
+  font-family: inherit;
+  font-weight: 500;
+  font-size: 14px;
+  line-height: 20px;
+  cursor: pointer;
+}
+
+.fp-seg-primary {
+  background: var(--fp-white);
+  color: var(--fp-text);
+  box-shadow: var(--fp-shadow-btn);
+}
+
+.fp-seg-ghost {
+  background: transparent;
+  color: var(--fp-muted);
+}
+
+.fp-vault-io {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 8px;
+  font-size: 13px;
+  line-height: 20px;
+}
+
+.fp-vault-io-btn {
+  border: none;
+  background: none;
+  padding: 4px 0;
+  font: inherit;
+  font-weight: 500;
+  font-size: 13px;
+  color: var(--fp-blue);
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.fp-vault-io-btn:hover {
+  color: #2563eb;
+}
+
+.fp-vault-io-dot {
+  color: var(--fp-hint);
+  user-select: none;
+}
+
+.fp-vault-list--live .vault-card {
+  max-width: 100%;
+}
+
+.fp-stats-row {
+  display: flex;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.fp-stat {
+  width: 222px;
+  max-width: 100%;
+  min-height: 102px;
+  padding: 25px 25px 16px;
+  background: var(--fp-white);
+  border: 1px solid var(--fp-border);
+  border-radius: 10px;
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.fp-stat-ico {
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  flex-shrink: 0;
+}
+
+.fp-stat-ico--blue {
+  background: #dbeafe;
+}
+.fp-stat-ico--amber {
+  background: #fef3c7;
+}
+.fp-stat-ico--green {
+  background: #d1fae5;
+}
+
+.fp-stat-num {
+  font-weight: 600;
+  font-size: 24px;
+  line-height: 32px;
+  color: var(--fp-text);
+}
+
+.fp-stat-label {
+  font-size: 14px;
+  line-height: 20px;
+  color: var(--fp-muted);
+}
+
+.fp-vault-list {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding-bottom: 32px;
+}
+
+.fp-vault-card {
+  padding: 25px 25px 20px;
+  background: var(--fp-white);
+  border: 1px solid var(--fp-border);
+  border-radius: 10px;
+}
+
+.fp-vault-card h3 {
+  margin: 0 0 12px;
+  font-weight: 600;
+  font-size: 18px;
+  line-height: 28px;
+  color: var(--fp-text);
+}
+
+.fp-vault-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 12px;
+  font-size: 14px;
+  line-height: 20px;
+  color: var(--fp-muted);
+}
+
+.fp-vault-meta span {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.fp-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.fp-tag {
+  padding: 4px 12px;
+  border-radius: 999px;
+  background: #eff6ff;
+  font-weight: 500;
+  font-size: 12px;
+  line-height: 16px;
+  color: var(--fp-blue);
+}
+
+/* ========== Nexus ========== */
+.fp-nexus-surface {
+  flex: 1;
+  background: var(--fp-nexus-grad);
+  padding: 24px 39px 120px 24px;
+}
+
+.fp-nexus-hero {
+  text-align: center;
+  max-width: 698px;
+  margin: 0 auto 24px;
+}
+
+.fp-nexus-hero .fp-hero-icon {
+  margin: 8px auto 16px;
+}
+
+.fp-nexus-hero .fp-h2 {
+  font-size: 30px;
+  line-height: 36px;
+}
+
+.fp-nexus-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  max-width: 698px;
+  margin: 0 auto 24px;
+}
+
+.fp-nexus-chip {
+  height: 38px;
+  padding: 0 17px;
+  border-radius: 999px;
+  border: 1px solid var(--fp-border);
+  background: var(--fp-white);
+  font-family: inherit;
+  font-weight: 500;
+  font-size: 14px;
+  line-height: 20px;
+  color: var(--fp-chip-text);
+  cursor: pointer;
+}
+
+.fp-nexus-chip--on {
+  background: #eff6ff;
+  border-color: var(--fp-blue);
+  color: #1d4ed8;
+}
+
+.fp-skill-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 337px));
+  gap: 24px;
+  max-width: 698px;
+  margin: 0 auto;
+  justify-content: center;
+}
+
+@media (max-width: 720px) {
+  .fp-skill-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.fp-skill-card {
+  border-radius: 14px;
+  border: 2px solid transparent;
+  padding: 26px 26px 16px;
+  background: var(--fp-white);
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.fp-skill-card[data-fp-tags*="心理"] {
+  background: #faf5ff;
+  border-color: #e9d4ff;
+}
+.fp-skill-card[data-fp-tags*="都市吃瓜"] {
+  background: #fff7ed;
+  border-color: #ffd6a8;
+}
+.fp-skill-card[data-fp-tags*="恐怖"] {
+  background: var(--fp-bg);
+  border-color: #d1d5dc;
+}
+.fp-skill-card[data-fp-tags*="职场"] {
+  background: #eff6ff;
+  border-color: #bedbff;
+}
+.fp-skill-card[data-fp-tags*="无限"] {
+  background: #f0fdf4;
+  border-color: #b9f8cf;
+}
+.fp-skill-card[data-fp-tags*="穿越"] {
+  background: #eef2ff;
+  border-color: #c6d2ff;
+}
+
+.fp-skill-card[hidden] {
+  display: none !important;
+}
+
+.fp-skill-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.fp-skill-head-inner {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+}
+
+.fp-skill-emoji {
+  width: 48px;
+  height: 48px;
+  border-radius: 10px;
+  display: grid;
+  place-items: center;
+  font-size: 24px;
+  line-height: 32px;
+  box-shadow: var(--fp-shadow-card);
+  flex-shrink: 0;
+}
+
+.fp-skill-card[data-fp-tags*="心理"] .fp-skill-emoji {
+  background: linear-gradient(135deg, #ad46ff, #f6339a);
+}
+.fp-skill-card[data-fp-tags*="都市吃瓜"] .fp-skill-emoji {
+  background: linear-gradient(135deg, #ff6900, #fb2c36);
+}
+.fp-skill-card[data-fp-tags*="恐怖"] .fp-skill-emoji {
+  background: linear-gradient(135deg, #364153, #101828);
+}
+.fp-skill-card[data-fp-tags*="职场"] .fp-skill-emoji {
+  background: linear-gradient(135deg, #155dfc, #00b8db);
+}
+.fp-skill-card[data-fp-tags*="无限"] .fp-skill-emoji {
+  background: linear-gradient(135deg, #00c950, #00bba7);
+}
+.fp-skill-card[data-fp-tags*="穿越"] .fp-skill-emoji {
+  background: linear-gradient(135deg, #615fff, #ad46ff);
+}
+
+.fp-skill-titles h3 {
+  margin: 0;
+  font-weight: 600;
+  font-size: 18px;
+  line-height: 28px;
+  color: var(--fp-text);
+}
+
+.fp-skill-titles p {
+  margin: 2px 0 0;
+  font-size: 12px;
+  line-height: 16px;
+  color: var(--fp-hint);
+}
+
+.fp-skill-rate {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-weight: 500;
+  font-size: 14px;
+  line-height: 20px;
+  color: #ca8a04;
+  flex-shrink: 0;
+}
+
+.fp-skill-rate svg {
+  width: 16px;
+  height: 16px;
+}
+
+.fp-skill-desc {
+  margin: 0;
+  font-size: 14px;
+  line-height: 22.75px;
+  color: var(--fp-muted);
+}
+
+.fp-skill-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding-top: 16px;
+  border-top: 1px solid var(--fp-border);
+}
+
+.fp-skill-uses {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  line-height: 16px;
+  color: var(--fp-hint);
+}
+
+.fp-skill-cta {
+  border: none;
+  border-radius: 10px;
+  padding: 8px 16px;
+  font-family: inherit;
+  font-weight: 500;
+  font-size: 14px;
+  line-height: 20px;
+  color: var(--fp-white);
+  cursor: default;
+}
+
+.fp-skill-card[data-fp-tags*="心理"] .fp-skill-cta {
+  background: linear-gradient(90deg, #ad46ff, #f6339a);
+}
+.fp-skill-card[data-fp-tags*="都市吃瓜"] .fp-skill-cta {
+  background: linear-gradient(90deg, #ff6900, #fb2c36);
+}
+.fp-skill-card[data-fp-tags*="恐怖"] .fp-skill-cta {
+  background: linear-gradient(90deg, #364153, #101828);
+}
+.fp-skill-card[data-fp-tags*="职场"] .fp-skill-cta {
+  background: linear-gradient(90deg, #155dfc, #00b8db);
+}
+.fp-skill-card[data-fp-tags*="无限"] .fp-skill-cta {
+  background: linear-gradient(90deg, #00c950, #00bba7);
+}
+.fp-skill-card[data-fp-tags*="穿越"] .fp-skill-cta {
+  background: linear-gradient(90deg, #615fff, #ad46ff);
+}
+
+.fp-nexus-float {
+  position: fixed;
+  left: 50%;
+  bottom: 24px;
+  transform: translateX(-50%);
+  z-index: 50;
+  display: none;
+  align-items: center;
+  gap: 12px;
+  padding: 16px 24px;
+  background: var(--fp-white);
+  border: 2px solid var(--fp-blue);
+  border-radius: 999px;
+  box-shadow: var(--fp-float-shadow);
+  max-width: calc(100vw - 32px);
+}
+
+.fp-body.fp-route-nexus .fp-nexus-float {
+  display: flex;
+}
+
+.fp-float-pill {
+  padding: 4px 12px;
+  border-radius: 999px;
+  background: var(--fp-blue);
+  color: var(--fp-white);
+  font-weight: 500;
+  font-size: 12px;
+  line-height: 16px;
+}
+
+.fp-float-label {
+  font-weight: 500;
+  font-size: 14px;
+  line-height: 20px;
+  color: var(--fp-chip-text);
+}
+
+.fp-footer-note {
+  text-align: center;
+  font-size: 12px;
+  line-height: 16px;
+  color: var(--fp-hint);
+  padding: 16px;
+  border-top: 1px solid var(--fp-border);
+  background: var(--fp-white);
+}
+
+.fp-footer-note a {
+  color: var(--fp-blue);
+  font-weight: 500;
+}
+
+.fp-stat--button {
+  border: 1px solid var(--fp-border);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.fp-stat--button:hover {
+  border-color: var(--fp-input-border);
+  box-shadow: var(--fp-shadow-card);
+}
+
+.fp-stat--button:focus-visible {
+  outline: 3px solid rgba(59, 130, 246, 0.35);
+  outline-offset: 2px;
+}
+
+.fp-skill-grid--repos {
+  grid-template-columns: repeat(2, minmax(0, 337px));
+}
+
+.fp-skill-card--repo {
+  text-decoration: none;
+  color: inherit;
+  cursor: pointer;
+  min-height: 248px;
+}
+
+.fp-skill-card--repo:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--fp-shadow-card);
+}
+
+.fp-skill-card--repo .fp-skill-cta {
+  cursor: pointer;
+}
+
+.fp-skill-card[data-fp-tags*="中文小说"] {
+  background: #eef2ff;
+  border-color: #c6d2ff;
+}
+
+.fp-skill-card[data-fp-tags*="中文小说"] .fp-skill-emoji {
+  background: linear-gradient(135deg, #615fff, #ad46ff);
+}
+
+.fp-skill-card[data-fp-tags*="中文小说"] .fp-skill-cta {
+  background: linear-gradient(90deg, #615fff, #ad46ff);
+}
+
+
+.forge-tt-actions button,
+.forge-tt-actions .btn-studio-secondary,
+.forge-tt-actions .btn-studio-ghost,
+.forge-tt-actions #tt-save-png,
+.forge-tt-actions #tt-save-novel {
+  border: none;
+  border-radius: 10px;
+  background: var(--fp-blue);
+  color: var(--fp-white);
+  box-shadow: var(--fp-shadow-btn);
+  font-weight: 600;
+}
+
+.forge-tt-actions button:hover,
+.forge-tt-actions .btn-studio-secondary:hover,
+.forge-tt-actions .btn-studio-ghost:hover,
+.forge-tt-actions #tt-save-png:hover,
+.forge-tt-actions #tt-save-novel:hover {
+  background: #2563eb;
+}
+
+/* forge-tt-actions-unified */
+
+
+.forge-tt-actions button,
+.forge-tt-actions .btn-studio-secondary,
+.forge-tt-actions .btn-studio-ghost,
+.forge-tt-actions #tt-save-png,
+.forge-tt-actions #tt-save-novel {
+  border: 1px solid var(--fp-input-border) !important;
+  background: var(--fp-white) !important;
+  color: var(--fp-text) !important;
+  box-shadow: var(--fp-shadow-btn);
+  font-size: 16px !important;
+  line-height: 24px !important;
+  font-weight: 600 !important;
+}
+
+.forge-tt-actions button:hover,
+.forge-tt-actions .btn-studio-secondary:hover,
+.forge-tt-actions .btn-studio-ghost:hover,
+.forge-tt-actions #tt-save-png:hover,
+.forge-tt-actions #tt-save-novel:hover {
+  background: #f9fafb !important;
+  border-color: #cbd5e1 !important;
+}
+
+/* 2026-05 interaction cleanup */
+.forge-route-a-bar {
+  justify-content: flex-start;
+}
+
+.forge-step-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.forge-step-pill--loading::after {
+  content: "";
+  width: 7px;
+  height: 7px;
+  border-radius: 999px;
+  background: currentColor;
+  opacity: 0.35;
+  animation: forgeStepDotPulse 1.8s ease-in-out infinite;
+}
+
+@keyframes forgeStepDotPulse {
+  0%, 100% { opacity: 0.25; transform: scale(0.85); }
+  50% { opacity: 1; transform: scale(1.08); }
+}
+
+.forge-chat-actions #btn-api-confirm,
+.forge-chat-actions #btn-api-send {
+  min-width: 96px;
+}
+
+.vault-card {
+  cursor: pointer;
+}
+
+.vault-card-tool,
+.vault-card-tool button {
+  cursor: default;
+}
+
+/* Clear button participates in unified long-image actions */
+.forge-tt-actions #tt-clear {
+  border: 1px solid var(--fp-input-border) !important;
+  background: var(--fp-white) !important;
+  color: var(--fp-text) !important;
+  font-size: 16px !important;
+  font-weight: 700 !important;
+  box-shadow: 0 2px 4px rgba(15, 23, 42, 0.08) !important;
+}

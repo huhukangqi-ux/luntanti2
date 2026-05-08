@@ -1,0 +1,17 @@
+{
+  "name": "shemei-xiaoshuo-server",
+  "private": true,
+  "version": "1.0.0",
+  "description": "本地代理：装载 skill/method 并转发 OpenAI 兼容 API，支撑网页调用 /xiaoshuo",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "dotenv": "^16.4.5",
+    "express": "^4.21.0"
+  }
+}

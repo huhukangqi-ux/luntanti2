@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>社媒小说创作 Skill — PRD</title>
+  <link rel="stylesheet" href="styles.css" />
+  <style>
+    .prd-wrap { max-width: 44rem; margin: 0 auto; padding: 2rem 1.25rem 3rem; }
+    .prd-wrap h1 { font-size: 1.25rem; font-weight: 600; margin: 0 0 1.5rem; letter-spacing: -0.02em; }
+    .prd-wrap h2 { font-size: 0.72rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.1em; color: var(--muted); margin: 2rem 0 0.65rem; padding-top: 0.5rem; border-top: 1px solid var(--line); }
+    .prd-wrap h2:first-of-type { margin-top: 0; border-top: none; padding-top: 0; }
+    .prd-wrap h3 { font-size: 1rem; font-weight: 600; margin: 1.25rem 0 0.4rem; }
+    .prd-wrap .card { margin-top: 0.5rem; }
+    .prd-wrap table { width: 100%; border-collapse: collapse; font-size: 0.9rem; margin: 0; }
+    .prd-wrap th, .prd-wrap td { text-align: left; padding: 0.5rem 0.65rem; border: 1px solid var(--line); vertical-align: top; }
+    .prd-wrap th { width: 28%; background: #f3f3f3; font-weight: 600; }
+    .prd-wrap ul { padding-left: 1.25rem; margin: 0.45rem 0; }
+    .prd-wrap li { margin: 0.2rem 0; }
+    .prd-wrap .muted { font-size: 0.82rem; color: var(--muted); margin-top: 2rem; }
+  </style>
+</head>
+<body>
+  <header class="studio-header">
+    <a class="studio-brand" href="./">论坛小说工作室</a>
+    <nav class="studio-nav-pills" aria-label="主导航">
+      <a class="nav-pill" href="./">主页</a>
+      <a class="nav-pill" href="index.legacy.html#compose">旧版创作</a>
+      <a class="nav-pill" href="index.legacy.html#library">The Vault</a>
+      <a class="nav-pill" href="index.legacy.html#explore">The Nexus</a>
+    </nav>
+    <div class="studio-header-right">
+      <a class="studio-help-link" href="index.legacy.html#compose-export-image">论坛体长图</a>
+    </div>
+  </header>
+
+  <article class="prd-wrap">
+    <h1>社媒小说创作 Skill — PRD</h1>
+
+    <h2>文档分工</h2>
+    <div class="card">
+      <table>
+        <thead>
+          <tr><th>文件</th><th>职责</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><strong>skill.md</strong></td>
+            <td>何时触发、如何编排：触发词、执行顺序、与用户交互节点（澄清 → 补全 → 确认 → 产出）。</td>
+          </tr>
+          <tr>
+            <td><strong>method.md</strong></td>
+            <td>创作方法论：每一步写什么、字段 checklist、文体要点；可被 skill 引用或拆成独立「文风 skill」。</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h2>触发与执行顺序</h2>
+    <div class="card">
+      <p><strong>触发</strong>：用户发送 <code style="font-family: var(--mono); font-size: 0.88em;">/xiaoshuo</code>（或与 PRD 约定的同义指令）时进入本技能流程。</p>
+      <p><strong>执行顺序</strong>（必须先读后写）：</p>
+      <ol>
+        <li><strong>理清用户需求</strong>：缺什么问什么（主题、人物意向、冲突、篇幅、风格等）；避免在用户未表态前直接长篇输出正文。</li>
+        <li><strong>灵感补全</strong>：按 <strong>method.md · Step1</strong> 的结构产出「灵感补全稿」，并明确邀请用户确认或修改。</li>
+        <li><strong>用户确认后</strong>：依次执行 <strong>Step2 大纲</strong> → <strong>Step3 论坛体正文</strong>（50～80 楼）→ <strong>Step4 人性化去痕</strong>（按 <strong>method.md · Step4</strong> 与 Humanizer-zh 原则，在<strong>不改剧情与楼层结构</strong>的前提下去 AI 腔）；中途若用户要求改设定，回到补全稿或大改版再继续。用户可声明<strong>不要 Step4</strong>，则以 Step3 为终稿。</li>
+      </ol>
+    </div>
+
+    <h2>创作知识纲要</h2>
+
+    <h3>Step1：灵感补全</h3>
+    <div class="card">
+      <p><strong>目的</strong>：对用户上传的零散灵感做结构化补全，便于后续大纲与成文。</p>
+      <p><strong>人物维度</strong></p>
+      <ul>
+        <li><strong>发帖者</strong>（楼主）</li>
+        <li><strong>跟帖者类型</strong>（可按故事删减组合）：反对者、支持者、中立者、活跃气氛者、推动情节者、当事人、揭秘者</li>
+      </ul>
+      <p><strong>核心内容维度</strong></p>
+      <ul>
+        <li><strong>发帖诉求</strong>（楼主上来要解决什么 / 爆料什么 / 求助什么）</li>
+        <li><strong>核心冲突</strong></li>
+        <li><strong>后续进展</strong>：事件升级 → 降温或僵持 → 转机或结局走向（可先粗后细）</li>
+      </ul>
+      <p><strong>澄清要点（与 method 对齐）</strong></p>
+      <ul>
+        <li>可追问<strong>叙事跨度</strong>：<strong>完整起承转合</strong>还是<strong>爆发切片式</strong>（矛盾最炸段展开、前文压进首帖），以便 Step2 分段与是否弱化起承。</li>
+      </ul>
+      <p><strong>交互要求</strong>：先理清缺失信息，再输出结构化灵感稿；文末固定话术：<strong>请确认整体方向，或直接修改某一条</strong>。</p>
+    </div>
+
+    <h3>Step2：论坛体故事发展大纲</h3>
+    <div class="card">
+      <p><strong>目的</strong>：在确认后的灵感上，生成分<strong>楼层推进的故事大纲</strong>（非正文），标明节奏与爆点。</p>
+      <ul>
+        <li>可按风格内化其他 skill，但输出形态仍为<strong>论坛帖发展脉络</strong>。</li>
+        <li>楼层区间<strong>不必均分</strong>，可突出<strong>主战场</strong>。</li>
+        <li><strong>主线要特别简洁</strong>：一句话能说清；避免人物与支线过多。</li>
+      </ul>
+    </div>
+
+    <h3>Step3：论坛体正文（约 50～80 楼）</h3>
+    <div class="card">
+      <p><strong>前提</strong>：灵感与大纲均已用户确认（或用户明示跳过大纲时在 skill 中按例外策略）。</p>
+      <ul>
+        <li><strong>吸引力</strong>：吃瓜、窥私、猎奇、秘闻感；钩子强，跟帖推高信息或带偏翻盘。</li>
+        <li><strong>声纹区分</strong>、<strong>短活有网感</strong>、<strong>节奏推进</strong>、<strong>跟帖打散</strong>。</li>
+      </ul>
+    </div>
+
+    <h3>Step4：人性化去痕</h3>
+    <div class="card">
+      <p>成文再过一遍减 AI 痕迹；细则见 <strong>method.md · Step4</strong>；判别与 <a href="https://github.com/op7418/Humanizer-zh" target="_blank" rel="noopener">Humanizer-zh</a> 对齐。</p>
+      <p><strong>硬性要求</strong>：保留楼层标记、顺序、剧情与反转；不把论坛体改成散文。</p>
+    </div>
+
+    <h2>给 skill.md 的极简自检清单</h2>
+    <div class="card">
+      <ul>
+        <li>是否在补全前尽量澄清了模糊点？</li>
+        <li>Step1 是否涵盖：人物类型、发帖诉求、冲突、进展、看点？</li>
+        <li>用户确认后再进入 Step2 / Step3？</li>
+        <li>正文楼层是否在约定区间，且每段推进是否有「新东西」？</li>
+        <li>Step4（若执行）：结构未走样，AI 腔是否明显下降？</li>
+        <li>正文是否避免「同类跟帖扎堆」？</li>
+      </ul>
+    </div>
+
+    <p class="muted">文档说明：本 PRD 定义分工与流程；具体提示词正文见 <code>skill.md</code> 与 <code>method.md</code>。仓库内 <code>prd.md</code> 为同源 Markdown，可diff对照。</p>
+  </article>
+
+  <footer class="site-footer">
+    <a href="./">返回主页</a> · <a href="index.legacy.html#compose">旧版创作</a>
+  </footer>
+</body>
+</html>
