@@ -74,7 +74,9 @@ function buildSystemPrompt(stage) {
   const header = [
     "你在网页端模拟用户已通过指令 /xiaoshuo 触发了「社媒论坛体小说」创作流程。",
     "你必须严格遵守下方附录中的 skill（编排闸门）与当前阶段对应的 method 片段。",
-    "多轮对话中：在用户确认前不要擅自进入 Step2/Step3；用户说「确认」或明确修改后再推进。",
+    "多轮对话中：在用户确认前不要擅自进入 Step2/Step3/Step4；用户说「确认」或明确要求进入下一步后再推进。",
+    "每个阶段都必须区分「确认进入下一步」和「修改当前阶段」：只要用户提出楼数、风格、人物、关系、爆点、开头、结尾、语气、增删改、压缩扩展等要求，就视为修改当前阶段，必须重做/调整当前阶段并再次请求确认。",
+    "若当前在 Step2，大纲后用户回复的是楼数、风格、分段、人物、爆点等修改意见（例如“60楼左右，狗血风格修罗场”），必须先重写/调整 Step2 大纲并再次请求确认；不得直接进入 Step3 正文。",
     "输出语言与用户一致，默认简体中文。论坛体正文必须使用 method 规定的楼层标记格式（如 【1L｜ID】）。",
     stage === "step3" || stage === "step4"
       ? "当前是长输出阶段：优先保证楼层推进、回复关系和声纹准确；若内容过长，可自然分段，并明确提示用户回复“继续”。"
@@ -119,6 +121,30 @@ function getLastUserText(messages) {
   return "";
 }
 
+function isStep2RevisionIntent(text) {
+  return /楼左右|楼数|多少楼|风格|狗血|修罗场|现实|悬疑|恐怖|言情|改|调整|修改|压缩|扩展|加|删|换|不要|更/.test(
+    text || ""
+  );
+}
+
+function isRevisionIntent(text) {
+  return /改|调整|修改|重写|补充|加|删|换|不要|更|改成|变成|压缩|扩展|缩短|拉长|楼左右|楼数|风格|狗血|修罗场|现实|悬疑|恐怖|言情|人物|关系|爆点|反转|结尾|开头|语气|口吻/.test(
+    text || ""
+  );
+}
+
+function wantsNextStep(text, nextStep) {
+  const t = text || "";
+  const stepPattern = new RegExp(`进入\\s*(?:Step\\s*)?${nextStep}|进\\s*${nextStep}|Step\\s*${nextStep}`, "i");
+  if (stepPattern.test(t)) return true;
+  if (/确认|可以|没问题|就这样|按这个|开始|继续/.test(t)) {
+    if (nextStep === 2) return /大纲|Step\s*2|下一步|继续/.test(t) || /^确认[。！!.\s]*$/.test(t);
+    if (nextStep === 3) return /正文|写正文|生成正文|Step\s*3|下一步|继续/.test(t) || /^确认[。！!.\s]*$/.test(t);
+    if (nextStep === 4) return /AI\s*感|人性化|去痕|润色|优化|Step\s*4|下一步/.test(t) || /^确认[。！!.\s]*$/.test(t);
+  }
+  return false;
+}
+
 function inferTargetStage(messages) {
   const lastUser = getLastUserText(messages);
   if (/Step\s*1|step\s*1|灵感补全|系统侧已注入|method「Step1|——\s*素材/.test(lastUser)) {
@@ -131,8 +157,18 @@ function inferTargetStage(messages) {
   if (/Step\s*2|step\s*2|大纲|分段/.test(lastUser)) return "step2";
 
   const current = inferCurrentStage(messages);
-  if (current === "step2" && /确认|可以|继续|开始写|进入/.test(lastUser)) return "step3";
-  if (current === "step3" && /确认|可以|优化|润色|人性化|去痕|AI\s*感/.test(lastUser)) return "step4";
+  if (current === "step1") {
+    if (isRevisionIntent(lastUser) && !wantsNextStep(lastUser, 2)) return "step1";
+    if (wantsNextStep(lastUser, 2)) return "step2";
+  }
+  if (current === "step2") {
+    if ((isStep2RevisionIntent(lastUser) || isRevisionIntent(lastUser)) && !wantsNextStep(lastUser, 3)) return "step2";
+    if (wantsNextStep(lastUser, 3)) return "step3";
+  }
+  if (current === "step3") {
+    if (isRevisionIntent(lastUser) && !wantsNextStep(lastUser, 4)) return "step3";
+    if (wantsNextStep(lastUser, 4)) return "step4";
+  }
   return current;
 }
 
