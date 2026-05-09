@@ -54,9 +54,11 @@ function buildMethodByStage(method, stage) {
   } else if (stage === "step2") {
     core = pickMethodSection(method, "## Step2：论坛体故事发展大纲", "## Step3：论坛体正文（约 50～80 楼）");
   } else if (stage === "step3") {
-    core = pickMethodSection(method, "## Step3：论坛体正文（约 50～80 楼）", "## Step4：人性化去痕（Humanizer / 减少 AI 感）");
+    core = pickMethodSection(method, "## Step3：论坛体正文（约 50～80 楼）", "## Step4：拼接全文（合并 Step3 分段）");
   } else if (stage === "step4") {
-    core = pickMethodSection(method, "## Step4：人性化去痕（Humanizer / 减少 AI 感）", "## 与用户沟通时的用语习惯");
+    core = pickMethodSection(method, "## Step4：拼接全文（合并 Step3 分段）", "## Step5：AI感优化（Humanizer / 减少 AI 感）");
+  } else if (stage === "step5") {
+    core = pickMethodSection(method, "## Step5：AI感优化（Humanizer / 减少 AI 感）", "## 与用户沟通时的用语习惯");
   } else {
     core = [
       pickMethodSection(method, "## Step1：灵感补全", "## Step2：论坛体故事发展大纲"),
@@ -76,7 +78,7 @@ function buildSystemPrompt(stage) {
     "你必须严格遵守下方附录中的 skill（编排闸门）与当前阶段对应的 method 片段。",
     "多轮对话中：在用户确认前不要擅自进入 Step2/Step3；用户说「确认」或明确修改后再推进。",
     "输出语言与用户一致，默认简体中文。论坛体正文必须使用 method 规定的楼层标记格式（如 【1L｜ID】）。",
-    stage === "step3" || stage === "step4"
+    stage === "step3" || stage === "step5"
       ? "当前是长输出阶段：优先保证楼层推进、回复关系和声纹准确；若内容过长，可自然分段，并明确提示用户回复“继续”。"
       : "当前优先保证交互闸门准确，先确认再推进，不要抢跑到后续阶段。",
     "",
@@ -103,6 +105,8 @@ function getSystemPrompt(stage) {
 function inferCurrentStage(messages) {
   for (let i = messages.length - 1; i >= 0; i -= 1) {
     const text = String(messages[i] && messages[i].content ? messages[i].content : "");
+    if (/拼接后的论坛体全文|拼接检查|Step4[：:]\s*拼接|合并 Step3/.test(text)) return "step4";
+    if (/Step5|AI感优化|人性化去痕|人性化润色|减少\s*AI\s*感/.test(text)) return "step5";
     if (/【\s*\d+L[｜|]/.test(text)) return "step3";
     if (/灵感补全稿|##\s*灵感补全|Step1|灵感/.test(text)) return "step1";
     if (/论坛体发展大纲|分段节奏|Step2|大纲/.test(text)) return "step2";
@@ -123,7 +127,10 @@ function inferTargetStage(messages) {
   if (/Step\s*1|step\s*1|灵感补全|系统侧已注入|method「Step1|——\s*素材/.test(lastUser)) {
     return "step1";
   }
-  if (/Step\s*4|step\s*4|人性化|去痕|AI\s*感|润色/.test(lastUser)) return "step4";
+  if (/Step\s*5|step\s*5|AI\s*感|人性化|去痕|润色|优化/.test(lastUser)) return "step5";
+  if (/Step\s*4|step\s*4|拼接|合并|整理全文|完整全文|确认全文|全文已完成|正文已完成/.test(lastUser)) {
+    return "step4";
+  }
   if (/Step\s*3|step\s*3|正文|论坛体正文|进入\s*3|进\s*3|继续\s*\d*[\s-]*(楼|L)?/.test(lastUser)) {
     return "step3";
   }
@@ -131,7 +138,8 @@ function inferTargetStage(messages) {
 
   const current = inferCurrentStage(messages);
   if (current === "step2" && /确认|可以|继续|开始写|进入/.test(lastUser)) return "step3";
-  if (current === "step3" && /确认|继续|优化|润色/.test(lastUser)) return "step4";
+  if (current === "step3" && /确认|可以|拼接|合并|整理|全文/.test(lastUser)) return "step4";
+  if (current === "step4" && /确认|可以|优化|润色|人性化|去痕|AI\s*感/.test(lastUser)) return "step5";
   return current;
 }
 
@@ -144,7 +152,7 @@ function buildChunkInstruction(stage) {
       "文末单独补一句：如果需要下一段，请直接回复“继续”。",
     ].join("");
   }
-  if (stage === "step4") {
+  if (stage === "step5") {
     return [
       "请主动采用分段输出，不要一次性润色完整长帖。",
       "这一次只优化 10 到 15 楼，保持楼层号、ID、剧情事实与回复关系不变。",
@@ -169,7 +177,7 @@ function buildChunkRetryHint(messages, stage) {
 }
 
 function compactMessagesForStage(messages, stage) {
-  if (stage !== "step3" && stage !== "step4") return messages;
+  if (stage !== "step3" && stage !== "step4" && stage !== "step5") return messages;
   const firstUser = messages.find((m) => m.role === "user");
   const recent = messages.slice(-8);
   const merged = [];
@@ -186,7 +194,8 @@ function getMaxTokensForStage(stage) {
   if (stage === "step1") return 2400;
   if (stage === "step2") return 3200;
   if (stage === "step3") return 6000;
-  if (stage === "step4") return 5000;
+  if (stage === "step4") return 7000;
+  if (stage === "step5") return 5000;
   return 3200;
 }
 
