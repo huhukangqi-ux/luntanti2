@@ -54,11 +54,9 @@ function buildMethodByStage(method, stage) {
   } else if (stage === "step2") {
     core = pickMethodSection(method, "## Step2：论坛体故事发展大纲", "## Step3：论坛体正文（约 50～80 楼）");
   } else if (stage === "step3") {
-    core = pickMethodSection(method, "## Step3：论坛体正文（约 50～80 楼）", "## Step4：拼接全文（合并 Step3 分段）");
+    core = pickMethodSection(method, "## Step3：论坛体正文（约 50～80 楼）", "## Step4：AI感优化（Humanizer / 减少 AI 感）");
   } else if (stage === "step4") {
-    core = pickMethodSection(method, "## Step4：拼接全文（合并 Step3 分段）", "## Step5：AI感优化（Humanizer / 减少 AI 感）");
-  } else if (stage === "step5") {
-    core = pickMethodSection(method, "## Step5：AI感优化（Humanizer / 减少 AI 感）", "## 与用户沟通时的用语习惯");
+    core = pickMethodSection(method, "## Step4：AI感优化（Humanizer / 减少 AI 感）", "## 与用户沟通时的用语习惯");
   } else {
     core = [
       pickMethodSection(method, "## Step1：灵感补全", "## Step2：论坛体故事发展大纲"),
@@ -78,7 +76,7 @@ function buildSystemPrompt(stage) {
     "你必须严格遵守下方附录中的 skill（编排闸门）与当前阶段对应的 method 片段。",
     "多轮对话中：在用户确认前不要擅自进入 Step2/Step3；用户说「确认」或明确修改后再推进。",
     "输出语言与用户一致，默认简体中文。论坛体正文必须使用 method 规定的楼层标记格式（如 【1L｜ID】）。",
-    stage === "step3" || stage === "step5"
+    stage === "step3" || stage === "step4"
       ? "当前是长输出阶段：优先保证楼层推进、回复关系和声纹准确；若内容过长，可自然分段，并明确提示用户回复“继续”。"
       : "当前优先保证交互闸门准确，先确认再推进，不要抢跑到后续阶段。",
     "",
@@ -105,8 +103,7 @@ function getSystemPrompt(stage) {
 function inferCurrentStage(messages) {
   for (let i = messages.length - 1; i >= 0; i -= 1) {
     const text = String(messages[i] && messages[i].content ? messages[i].content : "");
-    if (/拼接后的论坛体全文|拼接检查|Step4[：:]\s*拼接|合并 Step3/.test(text)) return "step4";
-    if (/Step5|AI感优化|人性化去痕|人性化润色|减少\s*AI\s*感/.test(text)) return "step5";
+    if (/Step4|AI感优化|人性化去痕|人性化润色|减少\s*AI\s*感/.test(text)) return "step4";
     if (/【\s*\d+L[｜|]/.test(text)) return "step3";
     if (/灵感补全稿|##\s*灵感补全|Step1|灵感/.test(text)) return "step1";
     if (/论坛体发展大纲|分段节奏|Step2|大纲/.test(text)) return "step2";
@@ -127,10 +124,7 @@ function inferTargetStage(messages) {
   if (/Step\s*1|step\s*1|灵感补全|系统侧已注入|method「Step1|——\s*素材/.test(lastUser)) {
     return "step1";
   }
-  if (/Step\s*5|step\s*5|AI\s*感|人性化|去痕|润色|优化/.test(lastUser)) return "step5";
-  if (/Step\s*4|step\s*4|拼接|合并|整理全文|完整全文|确认全文|全文已完成|正文已完成/.test(lastUser)) {
-    return "step4";
-  }
+  if (/Step\s*4|step\s*4|AI\s*感|人性化|去痕|润色|优化/.test(lastUser)) return "step4";
   if (/Step\s*3|step\s*3|正文|论坛体正文|进入\s*3|进\s*3|继续\s*\d*[\s-]*(楼|L)?/.test(lastUser)) {
     return "step3";
   }
@@ -138,21 +132,19 @@ function inferTargetStage(messages) {
 
   const current = inferCurrentStage(messages);
   if (current === "step2" && /确认|可以|继续|开始写|进入/.test(lastUser)) return "step3";
-  if (current === "step3" && /确认|可以|拼接|合并|整理|全文/.test(lastUser)) return "step4";
-  if (current === "step4" && /确认|可以|优化|润色|人性化|去痕|AI\s*感/.test(lastUser)) return "step5";
+  if (current === "step3" && /确认|可以|优化|润色|人性化|去痕|AI\s*感/.test(lastUser)) return "step4";
   return current;
 }
 
 function buildChunkInstruction(stage) {
   if (stage === "step3") {
     return [
-      "请主动采用分段输出，不要一次性写完整长帖。",
-      "这一次只输出当前论坛体正文的一段，控制在 20 到 25 楼。",
-      "必须从当前应写的起始楼层连续编号，保留【xL｜ID】格式与回复楼层标注。",
-      "文末单独补一句：如果需要下一段，请直接回复“继续”。",
+      "请一次性输出本次 Step3 的完整论坛体正文，不要主动拆成多轮，也不要要求用户回复“继续”获取下一段。",
+      "默认按已确认大纲完成约 50 到 80 楼；若用户指定楼层数，以用户指定为准。",
+      "必须保留【xL｜ID】格式、随机网名、回复楼层标注，并在全文结束后邀请用户确认是否进入 Step4 AI感优化。",
     ].join("");
   }
-  if (stage === "step5") {
+  if (stage === "step4") {
     return [
       "请主动采用分段输出，不要一次性润色完整长帖。",
       "这一次只优化 10 到 15 楼，保持楼层号、ID、剧情事实与回复关系不变。",
@@ -177,7 +169,7 @@ function buildChunkRetryHint(messages, stage) {
 }
 
 function compactMessagesForStage(messages, stage) {
-  if (stage !== "step3" && stage !== "step4" && stage !== "step5") return messages;
+  if (stage !== "step3" && stage !== "step4") return messages;
   const firstUser = messages.find((m) => m.role === "user");
   const recent = messages.slice(-8);
   const merged = [];
@@ -191,11 +183,10 @@ function compactMessagesForStage(messages, stage) {
 function getMaxTokensForStage(stage) {
   const configured = Number(process.env.LLM_MAX_TOKENS);
   if (configured > 0) return configured;
-  if (stage === "step1") return 2400;
+  if (stage === "step1") return 3600;
   if (stage === "step2") return 3200;
-  if (stage === "step3") return 6000;
-  if (stage === "step4") return 7000;
-  if (stage === "step5") return 5000;
+  if (stage === "step3") return 12000;
+  if (stage === "step4") return 5000;
   return 3200;
 }
 
@@ -364,6 +355,118 @@ function parseUpstreamJson(response, text, res) {
   return content;
 }
 
+function extractUpstreamContent(response, text) {
+  let data;
+  try {
+    data = JSON.parse(text);
+  } catch (_e) {
+    const err = new Error("上游返回非 JSON");
+    err.detail = { status: response.status, snippet: text.slice(0, 500) };
+    throw err;
+  }
+
+  if (!response.ok) {
+    const err = new Error(data.error?.message || data.message || `上游错误 HTTP ${response.status}`);
+    err.detail = data;
+    throw err;
+  }
+
+  const choice = data.choices && data.choices[0];
+  const msg = choice && choice.message;
+  const content = msg && msg.content;
+  if (typeof content !== "string") {
+    const err = new Error("上游未返回文本 content");
+    err.detail = data;
+    throw err;
+  }
+
+  return content;
+}
+
+function prepareChatPayload(raw, trace) {
+  if (!Array.isArray(raw) || raw.length === 0) {
+    const err = new Error("body.messages 必须为非空数组");
+    err.statusCode = 400;
+    throw err;
+  }
+
+  const sanitized = [];
+  for (const m of raw) {
+    if (!m || typeof m !== "object") continue;
+    const role = m.role;
+    const content = m.content;
+    if ((role !== "user" && role !== "assistant") || typeof content !== "string") {
+      continue;
+    }
+    if (content.trim() === "") continue;
+    sanitized.push({ role, content });
+  }
+
+  if (sanitized.length === 0) {
+    const err = new Error("至少需要一条有效的 user / assistant 消息");
+    err.statusCode = 400;
+    throw err;
+  }
+
+  const model = process.env.LLM_MODEL || "gpt-4o-mini";
+  const currentStage = inferTargetStage(sanitized);
+  const stageMessages = compactMessagesForStage(sanitized, currentStage);
+  const chunkInstruction = buildChunkInstruction(currentStage);
+  const baseMessages = [
+    { role: "system", content: getSystemPrompt(currentStage) },
+    ...stageMessages,
+    ...(chunkInstruction ? [{ role: "user", content: chunkInstruction }] : []),
+  ];
+  const payload = {
+    model,
+    messages: baseMessages,
+    temperature: Number(process.env.LLM_TEMPERATURE) || 1,
+    max_tokens: getMaxTokensForStage(currentStage),
+  };
+
+  console.log(
+    `[api/chat ${trace}] prepared stage=${currentStage} raw_messages=${raw.length} sanitized=${sanitized.length} prompt_messages=${baseMessages.length}`
+  );
+
+  return { payload, currentStage, sanitized };
+}
+
+const chatJobs = new Map();
+const CHAT_JOB_TTL_MS = 30 * 60 * 1000;
+
+function pruneChatJobs() {
+  const cutoff = nowMs() - CHAT_JOB_TTL_MS;
+  for (const [id, job] of chatJobs.entries()) {
+    if (job.createdAt < cutoff && job.status !== "running") chatJobs.delete(id);
+  }
+}
+
+async function runChatJob(job, url, key, payload) {
+  const started = nowMs();
+  try {
+    console.log(
+      `[api/job ${job.id}] upstream:start model=${payload.model} messages=${payload.messages.length} max_tokens=${payload.max_tokens}`
+    );
+    const upstream = await requestChatCompletion(url, key, payload);
+    console.log(
+      `[api/job ${job.id}] upstream:response status=${upstream.response.status} after=${elapsed(started)}`
+    );
+    const content = extractUpstreamContent(upstream.response, upstream.text);
+    job.status = "done";
+    job.content = content;
+    job.completedAt = nowMs();
+    console.log(`[api/job ${job.id}] done chars=${content.length} total=${elapsed(started)}`);
+  } catch (e) {
+    job.status = "error";
+    job.error = e && e.name === "AbortError"
+      ? "请求超时：系统已等待 5 分钟，但上游仍未及时返回。你可以重新试一次。"
+      : e.message || String(e);
+    job.detail = e.detail;
+    job.completedAt = nowMs();
+    console.warn(`[api/job ${job.id}] error total=${elapsed(started)} ${job.error}`);
+  }
+}
+
 const app = express();
 
 app.use((req, res, next) => {
@@ -406,6 +509,62 @@ app.get("/api/health", (_req, res) => {
   });
 });
 
+app.post("/api/chat-jobs", (req, res) => {
+  const trace = req.traceId || Math.random().toString(36).slice(2, 8);
+  try {
+    const key = process.env.LLM_API_KEY;
+    if (!key) {
+      return res.status(503).json({
+        error: "LLM_API_KEY 未配置。复制 server/.env.example 为 server/.env 并填写密钥。",
+      });
+    }
+
+    pruneChatJobs();
+    const base = (process.env.LLM_BASE_URL || "https://api.openai.com/v1").replace(/\/$/, "");
+    const url = `${base}/chat/completions`;
+    const { payload, currentStage } = prepareChatPayload(req.body.messages, trace);
+    const id = `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 8)}`;
+    const job = {
+      id,
+      status: "running",
+      stage: currentStage,
+      createdAt: nowMs(),
+      content: "",
+      error: "",
+    };
+    chatJobs.set(id, job);
+    runChatJob(job, url, key, payload);
+    return res.status(202).json({ jobId: id, status: job.status, stage: currentStage });
+  } catch (e) {
+    return res.status(e.statusCode || 500).json({ error: e.message || String(e) });
+  }
+});
+
+app.get("/api/chat-jobs/:id", (req, res) => {
+  const job = chatJobs.get(req.params.id);
+  if (!job) {
+    return res.status(404).json({ error: "任务不存在或已过期" });
+  }
+  if (job.status === "done") {
+    return res.json({
+      jobId: job.id,
+      status: job.status,
+      stage: job.stage,
+      message: { role: "assistant", content: job.content },
+    });
+  }
+  if (job.status === "error") {
+    return res.status(500).json({
+      jobId: job.id,
+      status: job.status,
+      stage: job.stage,
+      error: job.error || "任务失败",
+      detail: job.detail,
+    });
+  }
+  return res.json({ jobId: job.id, status: job.status, stage: job.stage });
+});
+
 app.post("/api/chat", async (req, res) => {
   const trace = req.traceId || Math.random().toString(36).slice(2, 8);
   const started = nowMs();
@@ -417,48 +576,9 @@ app.post("/api/chat", async (req, res) => {
       });
     }
 
-    const raw = req.body.messages;
-    if (!Array.isArray(raw) || raw.length === 0) {
-      return res.status(400).json({ error: "body.messages 必须为非空数组" });
-    }
-
-    const sanitized = [];
-    for (const m of raw) {
-      if (!m || typeof m !== "object") continue;
-      const role = m.role;
-      const content = m.content;
-      if ((role !== "user" && role !== "assistant") || typeof content !== "string") {
-        continue;
-      }
-      if (content.trim() === "") continue;
-      sanitized.push({ role, content });
-    }
-
-    if (sanitized.length === 0) {
-      return res.status(400).json({ error: "至少需要一条有效的 user / assistant 消息" });
-    }
-
     const base = (process.env.LLM_BASE_URL || "https://api.openai.com/v1").replace(/\/$/, "");
     const url = `${base}/chat/completions`;
-    const model = process.env.LLM_MODEL || "gpt-4o-mini";
-
-    const currentStage = inferTargetStage(sanitized);
-    const stageMessages = compactMessagesForStage(sanitized, currentStage);
-    const chunkInstruction = buildChunkInstruction(currentStage);
-    const baseMessages = [
-      { role: "system", content: getSystemPrompt(currentStage) },
-      ...stageMessages,
-      ...(chunkInstruction ? [{ role: "user", content: chunkInstruction }] : []),
-    ];
-    const payload = {
-      model,
-      messages: baseMessages,
-      temperature: Number(process.env.LLM_TEMPERATURE) || 1,
-      max_tokens: getMaxTokensForStage(currentStage),
-    };
-    console.log(
-      `[api/chat ${trace}] prepared stage=${currentStage} raw_messages=${raw.length} sanitized=${sanitized.length} prompt_messages=${baseMessages.length}`
-    );
+    const { payload } = prepareChatPayload(req.body.messages, trace);
 
     try {
       return await streamChatCompletion(url, key, payload, res, trace);
