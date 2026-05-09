@@ -174,7 +174,7 @@
     var muse = (composeRawText || "").trim();
     var lines = [];
 
-    lines.push("请按本项目 skill.md → method.md 执行全流程（Step1 确认后再 Step2/3/4；可声明不要 Step4）。");
+    lines.push("请按本项目 skill.md → method.md 执行全流程（Step1 确认后再 Step2/3/4/5；Step4 为拼接全文，Step5 为可跳过的 AI感优化）。");
     lines.push("");
     lines.push("—— 素材（来自上传文件）——");
     lines.push(muse || "（请先上传 .txt 或 .md）");
@@ -244,11 +244,14 @@
 
   function inferRouteAPhase(assistantText) {
     var t = assistantText || "";
+    if (/Step5|AI感优化|人性化去痕|人性化润色|减少\s*AI\s*感/.test(t)) {
+      return { id: 5, label: "Step5 AI感优化" };
+    }
+    if (/拼接后的论坛体全文|拼接检查|Step4[：:]\s*拼接|合并 Step3/.test(t)) {
+      return { id: 4, label: "Step4 拼接全文" };
+    }
     if (/【\s*\d+L[｜|]/.test(t)) {
       return { id: 3, label: "Step3 论坛体正文" };
-    }
-    if (/Step4|人性化去痕|人性化润色|减少\s*AI\s*感/.test(t)) {
-      return { id: 4, label: "Step4 人味润色" };
     }
     if (/论坛体发展大纲|分段节奏/.test(t)) {
       return { id: 2, label: "Step2 大纲" };
@@ -265,8 +268,11 @@
     if (/Step\s*1|step\s*1|灵感补全|系统侧已注入|method「Step1|——\s*素材/.test(u)) {
       return { id: 1, label: "Step1 灵感" };
     }
-    if (/Step\s*4|step\s*4|人性化|去痕|AI\s*感|润色/.test(u)) {
-      return { id: 4, label: "Step4 人味润色" };
+    if (/Step\s*5|step\s*5|人性化|去痕|AI\s*感|润色|优化/.test(u)) {
+      return { id: 5, label: "Step5 AI感优化" };
+    }
+    if (/Step\s*4|step\s*4|拼接|合并|整理全文|完整全文|确认全文|正文已完成/.test(u)) {
+      return { id: 4, label: "Step4 拼接全文" };
     }
     if (/Step\s*3|step\s*3|正文|论坛体正文|进入\s*3|进\s*3|继续\s*\d*[\s-]*(楼|L)?/.test(u)) {
       return { id: 3, label: "Step3 论坛体正文" };
@@ -321,7 +327,7 @@
     var canSkip4 = false;
     if (hasAssistantTurn && !busy) {
       var ph2 = inferRouteAPhase(last);
-      canSkip4 = ph2.id >= 3 || /Step4|人性化/.test(last || "");
+      canSkip4 = ph2.id >= 4 || /Step5|AI感优化|人性化/.test(last || "");
     }
     if (btnS) btnS.disabled = !canSkip4;
   }
@@ -1340,7 +1346,7 @@
     var btnQs = document.getElementById("btn-quick-skip-step4");
     if (btnQs) {
       btnQs.addEventListener("click", function () {
-        sendQuickUserMessage("请跳过 Step4 人性化润色，以当前论坛体正文为终稿。");
+        sendQuickUserMessage("请跳过 Step5 AI感优化，以当前拼接后的论坛体全文为终稿。");
       });
     }
     var btnQf = document.getElementById("btn-quick-focus-reply");
