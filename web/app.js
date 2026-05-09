@@ -174,7 +174,7 @@
     var muse = (composeRawText || "").trim();
     var lines = [];
 
-    lines.push("请按本项目 skill.md → method.md 执行全流程（Step1 确认后再 Step2/3/4/5；Step4 为拼接全文，Step5 为可跳过的 AI感优化）。");
+    lines.push("请按本项目 skill.md → method.md 执行全流程（Step1 确认后再 Step2/3/4；Step3 一次性输出完整正文，Step4 为可跳过的 AI感优化）。");
     lines.push("");
     lines.push("—— 素材（来自上传文件）——");
     lines.push(muse || "（请先上传 .txt 或 .md）");
@@ -244,11 +244,8 @@
 
   function inferRouteAPhase(assistantText) {
     var t = assistantText || "";
-    if (/Step5|AI感优化|人性化去痕|人性化润色|减少\s*AI\s*感/.test(t)) {
-      return { id: 5, label: "Step5 AI感优化" };
-    }
-    if (/拼接后的论坛体全文|拼接检查|Step4[：:]\s*拼接|合并 Step3/.test(t)) {
-      return { id: 4, label: "Step4 拼接全文" };
+    if (/Step4|AI感优化|人性化去痕|人性化润色|减少\s*AI\s*感/.test(t)) {
+      return { id: 4, label: "Step4 AI感优化" };
     }
     if (/【\s*\d+L[｜|]/.test(t)) {
       return { id: 3, label: "Step3 论坛体正文" };
@@ -268,11 +265,8 @@
     if (/Step\s*1|step\s*1|灵感补全|系统侧已注入|method「Step1|——\s*素材/.test(u)) {
       return { id: 1, label: "Step1 灵感" };
     }
-    if (/Step\s*5|step\s*5|人性化|去痕|AI\s*感|润色|优化/.test(u)) {
-      return { id: 5, label: "Step5 AI感优化" };
-    }
-    if (/Step\s*4|step\s*4|拼接|合并|整理全文|完整全文|确认全文|正文已完成/.test(u)) {
-      return { id: 4, label: "Step4 拼接全文" };
+    if (/Step\s*4|step\s*4|人性化|去痕|AI\s*感|润色|优化/.test(u)) {
+      return { id: 4, label: "Step4 AI感优化" };
     }
     if (/Step\s*3|step\s*3|正文|论坛体正文|进入\s*3|进\s*3|继续\s*\d*[\s-]*(楼|L)?/.test(u)) {
       return { id: 3, label: "Step3 论坛体正文" };
@@ -327,7 +321,7 @@
     var canSkip4 = false;
     if (hasAssistantTurn && !busy) {
       var ph2 = inferRouteAPhase(last);
-      canSkip4 = ph2.id >= 4 || /Step5|AI感优化|人性化/.test(last || "");
+      canSkip4 = ph2.id >= 3 || /Step4|AI感优化|人性化/.test(last || "");
     }
     if (btnS) btnS.disabled = !canSkip4;
   }
@@ -974,9 +968,64 @@
       }
     },
 
+    sleep: function (ms) {
+      return new Promise(function (resolve) {
+        setTimeout(resolve, ms);
+      });
+    },
+
+    postChatJob: async function () {
+      var start = await fetch(apiUrl("/api/chat-jobs"), {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ messages: API.messages }),
+      });
+      var started = await start.json().catch(function () {
+        return {};
+      });
+      if (!start.ok || !started.jobId) {
+        throw new Error(started.error || "任务创建失败");
+      }
+
+      var maxPolls = 180;
+      for (var i = 0; i < maxPolls; i++) {
+        await API.sleep(i < 3 ? 1200 : 2000);
+        var r = await fetch(apiUrl("/api/chat-jobs/" + encodeURIComponent(started.jobId)), {
+          method: "GET",
+        });
+        var j = await r.json().catch(function () {
+          return {};
+        });
+
+        if (r.ok && j.status === "done") {
+          if (!j.message || typeof j.message.content !== "string") {
+            throw new Error("任务响应格式异常");
+          }
+          return j.message.content;
+        }
+        if (!r.ok || j.status === "error") {
+          throw new Error(j.error || "任务失败");
+        }
+      }
+
+      throw new Error("任务仍在生成中，请稍后重试。");
+    },
+
     postChat: async function () {
       API.setLoading(true);
       API.setError("");
+
+      try {
+        var jobContent = await API.postChatJob();
+        API.addAssistantMessage(jobContent);
+        showToast("已收到助手回复");
+        return true;
+      } catch (jobError) {
+        API.setError(jobError.message || String(jobError));
+        return false;
+      } finally {
+        API.setLoading(false);
+      }
 
       try {
         var r = await fetch(apiUrl("/api/chat"), {
@@ -1013,6 +1062,7 @@
           var sseDecoder = new TextDecoder("utf-8");
           var sseBuffer = "";
           var sseContent = "";
+          var sseDone = false;
 
           function handleSseBlock(block) {
             if (!block || block.charAt(0) === ":") return;
@@ -1020,8 +1070,12 @@
             var dataLines = [];
             block.split(/\r?\n/).forEach(function (line) {
               if (line.indexOf("event:") === 0) eventName = line.slice(6).trim();
-              if (line.indexOf("data:") === 0) dataLines.push(line.slice(5).trim());
+              if (line.indexOf("data:") === 0) dataLines.push(line.slice(5).replace(/^\s/, ""));
             });
+            if (eventName === "done") {
+              sseDone = true;
+              return;
+            }
             if (eventName !== "delta" || !dataLines.length) return;
             try {
               var payload = JSON.parse(dataLines.join("\n"));
@@ -1043,6 +1097,10 @@
           sseBuffer += sseDecoder.decode();
           if (sseBuffer) handleSseBlock(sseBuffer);
           API.updateLastAssistantMessage(sseContent);
+          if (!sseContent.trim() && !sseDone) {
+            API.setError("流式响应结束，但没有收到有效正文。请重试一次。");
+            return false;
+          }
           showToast("已收到助手回复");
           return true;
         }
@@ -1346,7 +1404,7 @@
     var btnQs = document.getElementById("btn-quick-skip-step4");
     if (btnQs) {
       btnQs.addEventListener("click", function () {
-        sendQuickUserMessage("请跳过 Step5 AI感优化，以当前拼接后的论坛体全文为终稿。");
+        sendQuickUserMessage("请跳过 Step4 AI感优化，以当前论坛体正文为终稿。");
       });
     }
     var btnQf = document.getElementById("btn-quick-focus-reply");
